@@ -1,0 +1,1306 @@
+<html>
+ 
+<head>
+<title>Window into...</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="gldebug.js"></script>
+<script type="text/javascript">
+var fov = 90;
+var animFrame=0;
+var polyCount=0;
+var clock=0.0;
+    var moonTexture;
+    var plantTexture;
+    var current_shader="default-fs";
+    var texture = [];
+    var gl;
+
+    var mouseDown = false;
+    var lastMouseX = null;
+    var lastMouseY = null;
+
+    moonRotationMatrix = mat4.create();
+    mat4.identity(moonRotationMatrix);
+
+        function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+
+function showAndClearField(frm){
+  if (frm.fov.value)
+      {fov=frm.fov.value;}
+ 
+}
+
+   function draw(xpos,ypos){
+        var canvas = document.getElementById('tutorial');
+        if (canvas.getContext){
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = "rgb(200,200,200)";
+  ctx.canvas.width  = window.innerWidth;
+  ctx.canvas.height = window.innerHeight;
+        ctx.fillRect (xpos, ypos, 10*fov, 10*fov);
+        }
+      }
+      
+      
+if(window.DeviceOrientationEvent) {
+  window.addEventListener("deviceorientation", process, false);
+} else {
+  // Le navigateur ne supporte pas l'événement deviceorientation
+}
+
+var lastgamma=0;
+function process(event) {
+  animFrame+=1;
+  var vflip = document.getElementById("VerticalFlip").checked;
+  var hflip = document.getElementById("HorizontalFlip").checked;
+  var alpha = -event.alpha;
+  if(hflip){alpha=alpha*-1;}
+  var beta =-event.beta;
+  if(vflip){beta=beta*-1;}
+  var gamma = event.gamma;
+        mat4.identity(moonRotationMatrix);
+
+	mat4.rotate(moonRotationMatrix, degToRad(beta ), [1, 0, 0]);
+	        
+mat4.rotate(moonRotationMatrix, degToRad(alpha ), [0, 0, 1]);
+mat4.rotate(moonRotationMatrix, degToRad((gamma+lastgamma)/2), [0, 1, 0]);
+lastgamma=(gamma+lastgamma)/2;
+
+//document.getElementById("log").innerHTML = "<ul><li>Alpha : " + alpha + "</li><li>Beta : " + beta + "</li><li>Gamma : " + gamma + "</li></ul>"; 
+
+}
+</script>
+<script id="chaser-line" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+float r = 0.006;
+float speed = 0.5;
+float tail = 0.3;
+vec3 col =  vec3(1.0, 0.2, 0.2);
+vec3 color ; 
+vec2 center(float k) {
+	vec2 cen = vec2(0.0);
+	cen.x = fract(k * time);
+	//cen.y = fract(time);
+	cen.y=0.5;
+	return cen;
+}
+
+void main( void ) {
+	
+	vec2 position =  (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x ;
+	//vec2 position =  vTextureCoord.xy / resolution.x ;
+	float aspect = resolution.x / resolution.y;
+	vec2 c = center(speed);
+	c.y  /=  aspect;
+	float d = distance(position, c);
+	if( d < r) {
+		color = col;
+	}else
+	if(  abs(position.y - c.y) < r){
+	color = vec3(1.0);
+		color  = col * ( max ( 0.8 - min ( pow ( d - r , tail ) , 0.9 ) , -0.2 ) );
+		color = vec3(2.0*sin(3.14159*2.0*position.s-4.0*time), 0.0, 0.0);
+	//color = vec3(vTextureCoord.s, 0.0, 0.0);
+	}else{
+		color = vec3(0.0);
+	}	
+        
+	gl_FragColor = vec4( color , 1.0 );
+
+}
+</script>
+<script id="lazer-line" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+
+
+vec3 lazer(vec2 pos, vec3 clr, float mult)
+{
+	
+	float x = time/5.5 * 2.0;
+	float w = fract(x*0.7);
+	w = sin(3.14156*w);
+	w *= 1.5+pos.x;
+	w *= 2.0;
+        vec3 color = clr * mult * w / abs(pos.y);
+
+	float d = distance(pos,vec2(-1.0+fract(x*0.5)*2.,0.0));
+	color += (clr * 0.25*w/d);
+	return color;
+}
+
+void main()
+{
+	vec2 pos = ((2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x  * 2.0 ) - 1.0;
+	pos.s = abs(pos.s);
+	vec3 color = max(vec3(0.), lazer(pos, vec3(1.75, 0.2, 3.), 0.25));
+	gl_FragColor = vec4(color * 0.05, 1.0);
+}
+
+
+</script>
+
+<script id="solar-storm" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+
+
+void main(void)
+{
+  // Be Cool
+  vec2 p = -1.0 + 2.0 * (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x;
+ 
+  float a = atan(p.y, p.x);
+  float r = length(p) + 0.0001;
+ 
+  float b = 1.9 * sin(8.0 * r - time - 2.0 * a);
+  b = 0.3125 / r + cos(7.0 * a + b * b) / (100.0 * r);
+  b *= smoothstep(0.2, 0.8, b);
+ 
+  gl_FragColor = vec4(b, 0.67 * b + 0.1 * sin(a + time), 0.0, 1.0);
+}
+
+
+</script>
+
+<script id="burngrid" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+float stime = time * 10.0;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+
+
+void main( void ) {
+
+	vec2 position = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x ;
+
+	float color = 0.0;
+	color += sin( position.x * cos( stime / 15.0 ) * 80.0 ) + cos( position.y * cos( stime / 15.0 ) * 10.0 );
+	color += sin( position.y * sin( stime / 10.0 ) * 40.0 ) + cos( position.x * sin( stime / 25.0 ) * 40.0 );
+	color += sin( position.x * sin( stime / 5.0 ) * 10.0 ) + sin( position.y * sin( stime / 35.0 ) * 80.0 );
+	color *= sin( stime / 10.0 ) * 0.5;
+
+	gl_FragColor = vec4( vec3( color, color * 0.5, sin( color + stime / 3.0 ) * 0.75 ), 1.0 );
+
+}</script>
+
+<script id="ripples2" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+float stime = time * 10.0;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+// water turbulence effect by joltz0r 2013-07-04, improved 2013-07-07
+// Altered
+
+#define MAX_ITER 11
+void main( void ) {
+vec2 position = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x ;
+	vec2 p = position*8.0- vec2(20.0);
+	vec2 i = p;
+	float c = 1.0;
+	float inten = .05;
+
+	for (int n = 0; n < MAX_ITER; n++) 
+	{
+		float t = time * (1.0 - (3.0 / float(n+1)));
+		i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+		c += 1.0/length(vec2(p.x / (sin(i.x+t)/inten),p.y / (cos(i.y+t)/inten)));
+	}
+	c /= float(MAX_ITER);
+	c = 1.5-sqrt(c);
+	gl_FragColor = vec4(vec3( 0.0, 0.0,c*c*c*c), 1.0);
+
+}
+</script>
+
+<script id="ripples" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+float stime = time * 10.0;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+// water turbulence effect by joltz0r 2013-07-04, improved 2013-07-07
+// Altered
+
+#define MAX_ITER 11
+void main( void ) {
+vec2 position = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x ;
+vec2 p = position*8.0- vec2(20.0);
+	vec2 i = p;
+	float c = 1.0;
+	float inten = .05;
+
+	for (int n = 0; n < MAX_ITER; n++) 
+	{
+		float t = time * (1.0 - (3.0 / float(n+1)));
+		i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+		c += 1.0/length(vec2(p.x / (sin(i.x+t)/inten),p.y / (cos(i.y+t)/inten)));
+	}
+	c /= float(MAX_ITER);
+	c = 1.5-sqrt(c);
+	gl_FragColor = vec4(vec3(0.0,0.0,c*c*c*c+0.2), 1.0);
+
+}
+</script>
+
+<script id="stars" type="x-shader/x-fragment">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.1415927
+
+uniform float time;
+float stime = time * 10.0;
+ vec2 resolution = vec2(1.0,1.0);
+varying vec2 vTextureCoord;
+
+// CBS
+// ported from https://www.shadertoy.com/view/lslGWr
+// Added some stars: Thanks to http://glsl.heroku.com/e#6904.0
+
+
+
+// http://www.fractalforums.com/new-theories-and-research/very-simple-formula-for-fractal-patterns/
+float field(in vec3 p) {
+	float strength = 7. + .03 * log(1.e-6 + fract(sin(time) * 4373.11));
+	float accum = 0.;
+	float prev = 0.;
+	float tw = 0.;
+	for (int i = 0; i < 32; ++i) {
+		float mag = dot(p, p);
+		p = abs(p) / mag + vec3(-.5, -.4, -1.5);
+		float w = exp(-float(i) / 7.);
+		accum += w * exp(-strength * pow(abs(mag - prev), 2.3));
+		tw += w;
+		prev = mag;
+	}
+	return max(0., 5. * accum / tw - .7);
+}
+
+vec3 nrand3( vec2 co )
+{
+	vec3 a = fract( cos( co.x*8.3e-3 + co.y )*vec3(1.3e5, 4.7e5, 2.9e5) );
+	vec3 b = fract( sin( co.x*0.3e-3 + co.y )*vec3(8.1e5, 1.0e5, 0.1e5) );
+	vec3 c = mix(a, b, 0.5);
+	return c;
+}
+
+
+void main() {
+	vec2 uv = 2. * (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x - 1.;
+	vec2 uvs = uv * resolution.xy / max(resolution.x, resolution.y);
+	vec3 p = vec3(uvs / 4., 0) + vec3(1., -1.3, 0.);
+	p += .2 * vec3(sin(time / 16.), sin(time / 12.),  sin(time / 128.));
+	float t = field(p);
+	float v = (1. - exp((abs(uv.x) - 1.) * 6.)) * (1. - exp((abs(uv.y) - 1.) * 6.));
+	
+	
+	//Let's add some stars
+	//Thanks to http://glsl.heroku.com/e#6904.0
+	vec2 seed = p.xy * 1.2;	
+	seed = floor(seed * resolution);
+	vec3 rnd = nrand3( seed );
+	vec4 starcolor = vec4(pow(rnd.y,40.0));
+
+	gl_FragColor = mix(.4, 1., v) * vec4(1.8 * t * t * t, 1.4 * t * t, t, 1.0)+starcolor;
+	
+}
+
+</script>
+<script id="plastique" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform float time;
+
+    vec2 resolution = vec2(1.0,1.0);
+    varying vec2 vTextureCoord;
+    varying vec3 vLightWeighting;
+
+    uniform sampler2D uSampler;
+    float borderWidth=0.02;
+    void main(void) {
+    vec2 pos = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x;
+       if ((pos.x<borderWidth) || (pos.x>(1.0-borderWidth)) || (pos.y<borderWidth) || (pos.y>(1.0-borderWidth))) {
+        gl_FragColor = vec4(0.0,0.0,0.0,1.0);
+       } else {
+        gl_FragColor = vec4(1.0);
+    }}
+</script>
+
+<script id="wireframe" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform float time;
+
+    vec2 resolution = vec2(1.0,1.0);
+    varying vec2 vTextureCoord;
+    varying vec3 vLightWeighting;
+
+    uniform sampler2D uSampler;
+    float borderWidth=0.02;
+    void main(void) {
+    vec2 pos = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x;
+       if ((pos.x<borderWidth) || (pos.x>(1.0-borderWidth)) || (pos.y<borderWidth) || (pos.y>(1.0-borderWidth))) {
+        gl_FragColor = vec4(1.0);
+       } else {
+        vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a);
+    }}
+</script>
+
+<script id="default-fs" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform float time;
+
+    varying vec2 vTextureCoord;
+    varying vec3 vLightWeighting;
+
+    uniform sampler2D uSampler;
+
+    void main(void) {
+        vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a);
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
+    attribute vec2 aTextureCoord;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+
+    uniform vec3 uAmbientColor;
+
+    uniform vec3 uLightingDirection;
+    uniform vec3 uDirectionalColor;
+    uniform float time;
+
+    uniform bool uUseLighting;
+
+    varying vec2 vTextureCoord;
+    varying vec3 vLightWeighting;
+
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vTextureCoord = aTextureCoord;
+
+        if (!uUseLighting) {
+            vLightWeighting = vec3(1.0, 1.0, 1.0);
+        } else {
+            vec3 transformedNormal = uNMatrix * aVertexNormal;
+            float directionalLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);
+            vLightWeighting = uAmbientColor + uDirectionalColor * directionalLightWeighting;
+        }
+    }
+</script>
+
+
+<script type="text/javascript">
+
+    
+    function initGL(canvas) {
+        try {
+            gl = canvas.getContext("experimental-webgl");
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+
+    var shaderProgram = [];
+
+    function initShaders(name) {
+        var fragmentShader = getShader(gl, name);//"shader-fs");
+        //var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+        //var chaserShader = getShader(gl, "chaser-line");
+
+        shaderProgram[name] = gl.createProgram();
+        gl.attachShader(shaderProgram[name], vertexShader);
+        gl.attachShader(shaderProgram[name], fragmentShader);
+        gl.linkProgram(shaderProgram[name]);
+
+        if (!gl.getProgramParameter(shaderProgram[name], gl.LINK_STATUS)) {
+            alert("Could not initialise shaders: " + WebGLDebugUtils.glEnumToString(gl.getError()));
+        }
+
+        gl.useProgram(shaderProgram[name]);
+
+        shaderProgram[name].vertexPositionAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram[name].vertexPositionAttribute);
+
+        shaderProgram[name].textureCoordAttribute = gl.getAttribLocation(shaderProgram[name], "aTextureCoord");
+        gl.enableVertexAttribArray(shaderProgram[name].textureCoordAttribute);
+
+        shaderProgram[name].vertexNormalAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexNormal");
+        gl.enableVertexAttribArray(shaderProgram[name].vertexNormalAttribute);
+
+        shaderProgram[name].pMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uPMatrix");
+        shaderProgram[name].time = gl.getUniformLocation(shaderProgram[name], "time");
+        shaderProgram[name].mvMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uMVMatrix");
+        shaderProgram[name].nMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uNMatrix");
+        shaderProgram[name].samplerUniform = gl.getUniformLocation(shaderProgram[name], "uSampler");
+        shaderProgram[name].useLightingUniform = gl.getUniformLocation(shaderProgram[name], "uUseLighting");
+        shaderProgram[name].ambientColorUniform = gl.getUniformLocation(shaderProgram[name], "uAmbientColor");
+        shaderProgram[name].lightingDirectionUniform = gl.getUniformLocation(shaderProgram[name], "uLightingDirection");
+        shaderProgram[name].directionalColorUniform = gl.getUniformLocation(shaderProgram[name], "uDirectionalColor");
+    }
+
+
+    function handleLoadedTexture(texture) {
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+        gl.generateMipmap(gl.TEXTURE_2D);
+
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+
+    function makeTexture(filename, extension) {
+    var newTexture = gl.createTexture();
+        newTexture.image = new Image();
+        newTexture.image.onload = function () {
+            handleLoadedTexture(newTexture)
+        }
+
+        newTexture.image.src = filename + "." + extension;
+        return newTexture;
+    }
+
+    function initTexture() {
+        moonTexture = makeTexture("moon", "gif");
+        
+        plantTexture = makeTexture( "imari_06_512", "png");
+        texture["dirt_tile"] = makeTexture("dirt_tile", "png");
+        texture["bush_tile"] = makeTexture("bush_tile", "png");
+        texture["grass_tile"] = makeTexture("grass_tile", "png");
+        texture["moon"] = moonTexture;
+    }
+
+
+    var mvMatrix = mat4.create();
+    var mvMatrixStack = [];
+    var pMatrix = mat4.create();
+
+    function mvPushMatrix(aMatrix) {
+        var copy = mat4.create();
+        mat4.set(aMatrix, copy);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix(aMatrix) {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix, stack is empty!";
+        }
+        var copy = mvMatrixStack.pop();
+        mat4.set(copy, aMatrix);
+        return aMatrix;
+    }
+
+    function setMatrixUniforms(name) {
+        if (! name) {name = "default-fs"};
+        gl.uniformMatrix4fv(shaderProgram[name].pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram[name].mvMatrixUniform, false, mvMatrix);
+
+        var normalMatrix = mat3.create();
+        mat4.toInverseMat3(mvMatrix, normalMatrix);
+        mat3.transpose(normalMatrix);
+        gl.uniformMatrix3fv(shaderProgram[name].nMatrixUniform, false, normalMatrix);
+    }
+
+
+
+
+    
+
+    function handleMouseDown(event) {
+        mouseDown = true;
+        lastMouseX = event.clientX;
+        lastMouseY = event.clientY;
+    }
+
+
+    function handleMouseUp(event) {
+        mouseDown = false;
+    }
+
+
+    function handleMouseMove(event) {
+        if (!mouseDown) {
+            return;
+        }
+        var newX = event.clientX;
+        var newY = event.clientY;
+
+        var deltaX = newX - lastMouseX
+        var newRotationMatrix = mat4.create();
+        mat4.identity(newRotationMatrix);
+        mat4.rotate(newRotationMatrix, degToRad(deltaX / 10), [0, 1, 0]);
+
+        var deltaY = newY - lastMouseY;
+        mat4.rotate(newRotationMatrix, degToRad(deltaY / 10), [1, 0, 0]);
+
+        mat4.multiply(newRotationMatrix, moonRotationMatrix, moonRotationMatrix);
+
+        lastMouseX = newX
+        lastMouseY = newY;
+    }
+
+
+
+    var moonVertexPositionBuffer;
+    var moonVertexNormalBuffer;
+    var moonVertexTextureCoordBuffer;
+    var moonVertexIndexBuffer;
+    
+    var squareVertexPositionBuffer;
+    var squareVertexColorBuffer;
+    var triangleVertexPositionBuffer;
+    var triangleVertexColorBuffer;
+
+    
+
+    function initBuffers() {
+        var latitudeBands = 10;
+        var longitudeBands = 10;
+        var radius = 2;
+
+        var vertexPositionData = [];
+        var normalData = [];
+        var textureCoordData = [];
+        for (var latNumber=0; latNumber <= latitudeBands; latNumber++) {
+            var theta = latNumber * Math.PI / latitudeBands;
+            var sinTheta = Math.sin(theta);
+            var cosTheta = Math.cos(theta);
+
+            for (var longNumber=0; longNumber <= longitudeBands; longNumber++) {
+                var phi = longNumber * 2 * Math.PI / longitudeBands;
+                var sinPhi = Math.sin(phi);
+                var cosPhi = Math.cos(phi);
+
+                var x = cosPhi * sinTheta;
+                var y = cosTheta;
+                var z = sinPhi * sinTheta;
+                var u = 1 - (longNumber / longitudeBands);
+                var v = 1 - (latNumber / latitudeBands);
+
+                normalData.push(x);
+                normalData.push(y);
+                normalData.push(z);
+                textureCoordData.push(u);
+                textureCoordData.push(v);
+                vertexPositionData.push(radius * x);
+                vertexPositionData.push(radius * y);
+                vertexPositionData.push(radius * z);
+            }
+            
+                    squareVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        vertices = [
+             1.0,  1.0,  0.0,
+            -1.0,  1.0,  0.0,
+             1.0, -1.0,  0.0,
+            -1.0, -1.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        squareVertexPositionBuffer.itemSize = 3;
+        squareVertexPositionBuffer.numItems = 4;
+
+ squareVertexColorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        colors = []
+        colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
+	colors = colors.concat([1.0, 0.5, 0.5, 1.0]);
+	colors = colors.concat([0.5, 1.0, 0.5, 1.0]);
+	colors = colors.concat([1.0, 1.0, 1.0, 1.0]);
+        
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        squareVertexColorBuffer.itemSize = 4;
+        squareVertexColorBuffer.numItems = 4;
+        
+        
+        triangle:
+        
+                   triangleVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+        vertices = [
+             1.0,  1.0,  0.0,
+            -1.0,  1.0,  0.0,
+             1.0, -1.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        triangleVertexPositionBuffer.itemSize = 2;
+        triangleVertexPositionBuffer.numItems = 3;
+
+ triangleVertexColorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+        colors = []
+        colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
+	colors = colors.concat([1.0, 0.5, 0.5, 1.0]);
+	colors = colors.concat([0.5, 1.0, 0.5, 1.0]);
+        
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        triangleVertexColorBuffer.itemSize = 3;
+        triangleVertexColorBuffer.numItems = 3;
+        
+        
+        
+        }
+
+        var indexData = [];
+        for (var latNumber=0; latNumber < latitudeBands; latNumber++) {
+            for (var longNumber=0; longNumber < longitudeBands; longNumber++) {
+                var first = (latNumber * (longitudeBands + 1)) + longNumber;
+                var second = first + longitudeBands + 1;
+                indexData.push(first);
+                indexData.push(second);
+                indexData.push(first + 1);
+
+                indexData.push(second);
+                indexData.push(second + 1);
+                indexData.push(first + 1);
+            }
+        }
+
+        moonVertexNormalBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalData), gl.STATIC_DRAW);
+        moonVertexNormalBuffer.itemSize = 3;
+        moonVertexNormalBuffer.numItems = normalData.length / 3;
+
+        moonVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordData), gl.STATIC_DRAW);
+        moonVertexTextureCoordBuffer.itemSize = 2;
+        moonVertexTextureCoordBuffer.numItems = textureCoordData.length / 2;
+
+        moonVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositionData), gl.STATIC_DRAW);
+        moonVertexPositionBuffer.itemSize = 3;
+        moonVertexPositionBuffer.numItems = vertexPositionData.length / 3;
+
+        moonVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+        moonVertexIndexBuffer.itemSize = 1;
+        moonVertexIndexBuffer.numItems = indexData.length;
+    }
+
+function drawMoon(){
+gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, moonTexture);
+        gl.uniform1i(shaderProgram["wireframe"].samplerUniform, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer);
+        setMatrixUniforms();
+        
+        gl.drawElements(gl.TRIANGLES, moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+        
+}
+
+function drawTriangle() {
+polyCount +=2;
+gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, moonTexture);
+        gl.uniform1i(shaderProgram["wireframe"].samplerUniform, 0);
+
+        
+
+
+gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        
+
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexColorAttribute, triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms();
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, triangleVertexPositionBuffer.numItems);
+}
+
+function drawSquare() {
+polyCount +=2;
+gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, moonTexture);
+        gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
+
+        
+
+
+gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        
+
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms();
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+}
+
+function drawShader(name) {
+polyCount +=2;
+        //alert(tex);
+        gl.activeTexture(gl.TEXTURE0);
+ //       var t = texture[tex];
+  //      if (!t) {alert("Texture " + tex + " not loaded");}
+ //       gl.bindTexture(gl.TEXTURE_2D, t);
+        if (!name) { name=current_shader; }
+        gl.useProgram(shaderProgram[name]);
+        gl.uniform1i(shaderProgram[name].samplerUniform, 0);
+        gl.uniform1f(shaderProgram[name].time, clock);
+        
+        
+        
+        
+                //var lighting = document.getElementById("lighting").checked;
+                //gl.uniform1i(shaderProgram["wireframe"].useLightingUniform, lighting);
+                var lighting=0;
+        if (lighting) {
+            gl.uniform3f(
+                shaderProgram["wireframe"].ambientColorUniform,
+                parseFloat(document.getElementById("ambientR").value),
+                parseFloat(document.getElementById("ambientG").value),
+                parseFloat(document.getElementById("ambientB").value)
+            );
+
+            var lightingDirection = [
+                parseFloat(document.getElementById("lightDirectionX").value),
+                parseFloat(document.getElementById("lightDirectionY").value),
+                parseFloat(document.getElementById("lightDirectionZ").value)
+            ];
+            var adjustedLD = vec3.create();
+            vec3.normalize(lightingDirection, adjustedLD);
+            vec3.scale(adjustedLD, -1);
+            gl.uniform3fv(shaderProgram["wireframe"].lightingDirectionUniform, adjustedLD);
+
+            gl.uniform3f(
+                shaderProgram["wireframe"].directionalColorUniform,
+                parseFloat(document.getElementById("directionalR").value),
+                parseFloat(document.getElementById("directionalG").value),
+                parseFloat(document.getElementById("directionalB").value)
+            );
+        }
+
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        
+        
+        if (name) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        
+
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms(name);
+        }
+        
+        
+        
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+}
+
+function drawPanel(tex) {
+polyCount +=2;
+        //alert(tex);
+        if (tex) {
+        gl.activeTexture(gl.TEXTURE0);
+        var t = texture[tex];
+        //if (!t) {alert("Texture " + tex + " not loaded");}
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.useProgram(shaderProgram["default-fs"]);
+        gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
+        gl.uniform1f(shaderProgram["default-fs"].time, clock);
+        }
+        
+                gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        
+        
+        
+        
+gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        
+
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms();
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+}
+
+
+function drawPlant() {
+
+gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, plantTexture);
+        gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
+
+        
+gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        
+
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms();
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+
+
+}
+
+
+function doLsys(oldArray, startMatrix) {
+clock=clock+0.01;
+//alert(oldArray);
+var transMatrix = mat4.create();
+var markMatrix = mat4.create();
+mat4.set(startMatrix,transMatrix);
+//mvPushMatrix(transMatrix);  
+//mat4.multiply(transMatrix, startMatrix);
+//mat4.scale(transMatrix, [0.5,0.5,0.5]);
+//Arrow:  [ s s s f f f f f F  [ r f f ]  [ R f f ] F [ r f f  f  ] [ R f  f f ] F [ r f f f f  ] [ R f f f f ]  ]
+var procedures = [] ;
+procedures["arrow"] = "[ fh s s s ff  pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile F  [ r ff pbush_tile ff pbush_tile ]  [ R ff pbush_tile ff pbush_tile ] F [ r ff pbush_tile ff pbush_tile  ff pbush_tile  ] [ R ff pbush_tile  ff pbush_tile ff pbush_tile ] F [ r ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile  ] [ R ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ]  ]".split(" ");
+//procedures["rows"] = "[ [ f [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff ] r ff R [  [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff f ] ]".split(" ");
+procedures["water_tile"] =  "shader_ripples ff".split(" ") ;
+procedures["rows"] = "[ [ water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff ] r ff R [  pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile ] ]".split(" ");
+procedures["board"] = "[ rows [ r ff ff R rows ] [ r ff  ff ff ff R rows ] [ r ff  ff ff ff ff ff R rows ] ]".split(" ");
+procedures["cube"] = "[ fh [ u fh R fh U fh z ] [ u fh r fh U fh z ] [ u fh z fh U fh z fh U fh z fh U fh z ] ]".split(" ");
+procedures["rise"] = "u s s ff S S U".split(" ");
+ procedures["figure"] = " set_shader_solar-storm u ff ff ff ff ff R ff ff  ff R R   ff [  [ ff ff R cube  ]  [ cube ff cube ff cube ff ff ] r ff R   [ cube ff set_shader_solar-storm cube set_shader_default-fs set_shader_solar-storm ff cube ff ff ] r ff R  [ cube ff cube ff cube ff ff ]  ] [ ff r r cube  ff cube ff cube ]  [ ff ff ff cube ff cube ff cube ] [ ff r ff ff cube ff cube ff  ] [ ff ff ff r ff ff cube ff cube ff  ]".split(" ");
+procedures["lower"] = "U s s ff S S u".split(" ");
+procedures["a"] = "pdirt_tile ff".split(" ");
+procedures["b"] = "pbush_tile ff".split(" ");
+procedures["c"] = "pgrass_tile ff".split(" ");
+procedures["d"] = "pmoon ff".split(" ");
+procedures["pipe_strip"] = " [ stretch_0.5,8.0,0.5 u ff ff U pdirt_tile ] ".split(" ");
+procedures["pipe"] = " [ s s s pipe_strip t pipe_strip t pipe_strip t  pipe_strip t pipe_strip t pipe_strip t  pipe_strip t pipe_strip t pipe_strip t  pipe_strip t pipe_strip t pipe_strip t ]  ".split(" ");
+procedures["pipe_step"] = " fh pipe  fh  ".split(" ");
+
+procedures["peano1"] = " [ s s  pipe_step R pipe_step r pipe_step pipe_step r pipe_step R pipe_step ] ff t t ".split(" ");
+procedures["peano2"] = "  [ s  r peano1 R peano1 R peano1 peano1 r peano1 r peano1 ] ff  ".split(" ");
+procedures["peano3"] = "  [ s  r peano2 R peano2 R peano2 peano2 r peano2 r peano2 ] ff   ".split(" ");
+procedures["peano4"] = "  [ s  r peano3 R peano3 R peano3 peano3 r peano3 r peano3 ] ff   ".split(" ");
+
+var texMatch = /^p(.*)/;
+var current_shaderMatch = /^set_shader_(.*)/;
+var shaderMatch = /^shader_(.*)/;
+var stretchMatch = /^stretch_(.*),(.*),(.*)/;
+
+//var map = "[raababacd]f[rdddcddaa]f[rbdabbdcc]f[rabaaabbb]f[rcddcdacbb]f[rccdbadbcaa]f[rcabaccdac]f[rabadddac]";
+//oldArray = "U ff ff ff u f".split(" ");
+//oldArray.push.apply(oldArray, map.split(""));
+document.getElementById("debug").innerHTML=oldArray;
+var commandArray=[];
+  for (var j=0; j<10; j++) {
+  commandArray=[];
+  for (var i=0; i<oldArray.length ; i++) {
+      if ( procedures[oldArray[i]] ) {
+	commandArray.push.apply(commandArray, procedures[oldArray[i]]);
+	} else {
+	commandArray.push(oldArray[i]);
+	}
+  }
+  oldArray=commandArray;
+  }
+  //document.getElementById("debug").innerHTML=commandArray;
+  for (var i = 0; i < commandArray.length; i++) {
+	if (commandArray[i] == 'fh') {
+	  mat4.translate(transMatrix, [0, 0.5, 0]);
+	} else if (commandArray[i] == 'ff') {
+	  mat4.translate(transMatrix, [0, 1.0, 0]);
+	} else if (commandArray[i] == 'tr') {
+	  drawTriangle();
+	} else if (commandArray[i] == 'f') {
+	  mat4.translate(transMatrix, [0, 1.0, 0]);
+	  //drawPanel("dirt_tile");;
+	} else if (commandArray[i] == 'r') {
+	  mat4.rotate(transMatrix, degToRad(-90), [0, 0, 1]);
+	} else if (commandArray[i] == 'u') {
+	  mat4.rotate(transMatrix, degToRad(90), [1, 0, 0]);
+	} else if (commandArray[i] == 'F') {
+	  mat4.translate(transMatrix, [0, -1.0, 0]);
+	  drawSquare();
+	} else if (commandArray[i] == 'z') {
+	  drawShader(current_shader);
+	} else if (commandArray[i].match(texMatch)) {
+	  var ret = commandArray[i].match(texMatch);
+	  drawPanel(ret[1]);
+	} else if (commandArray[i].match(shaderMatch)) {
+	  var ret = commandArray[i].match(shaderMatch);
+	  drawShader(ret[1]);
+	} else if (commandArray[i].match(current_shaderMatch)) {
+	  var ret = commandArray[i].match(current_shaderMatch);
+	  current_shader=ret[1];
+	} else if (commandArray[i].match(stretchMatch)) {
+	  var ret = commandArray[i].match(stretchMatch);
+	  mat4.scale(transMatrix,  [ret[1], ret[2], ret[3]]);
+	}  else if (commandArray[i] == 'R') {
+	  mat4.rotate(transMatrix, degToRad(90), [0, 0, 1]);
+	} else if (commandArray[i] == 'U') {
+	  mat4.rotate(transMatrix, degToRad(-90), [1, 0, 0]);
+	} else if (commandArray[i] == 's') {
+	  mat4.scale(transMatrix,  [0.5, 0.5, 0.5]);
+	} else if (commandArray[i] == 'S') {
+	  mat4.scale(transMatrix,  [2, 2, 2]);
+} else if (commandArray[i] == 't') {
+	  mat4.rotate(transMatrix, degToRad(-30), [0, 1, 0]);
+} else if (commandArray[i] == 'T') {
+	  mat4.rotate(transMatrix, degToRad(30), [0, 1, 0]);
+	} else if (commandArray[i] == '[') {
+	  mvPushMatrix(transMatrix);
+	} else if (commandArray[i] == ']') {
+	  transMatrix = mvPopMatrix(transMatrix);
+	} else if (commandArray[i] == 'mark') {
+	  mat4.set(transMatrix,markMatrix);
+	}
+	
+    //Do something
+
+ // gl.uniform3f(
+ //               shaderProgram["wireframe"].ambientColorUniform,
+ //               parseFloat(1.0),
+ //               parseFloat(1.0),
+ //               parseFloat(1.0)
+ // );
+  mat4.identity(mvMatrix);
+	
+  mat4.translate(mvMatrix, [0, 0, -6]);
+	
+  mat4.multiply(mvMatrix, moonRotationMatrix);
+  mat4.set(transMatrix, mvMatrix);
+  mat4.scale(mvMatrix, [0.5,0.5,0.5]);
+
+
+  }
+//mvPopMatrix(transMatrix);
+}
+
+
+
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        mat4.perspective(fov, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+       mat4.identity(mvMatrix);
+        mat4.multiply(mvMatrix, moonRotationMatrix);
+//mat4.translate(mvMatrix, [0,0,-5]);
+        
+mat4.scale(mvMatrix, [10,10,10]);
+//drawSquare();
+  var lsystem = document.getElementById("lsystem").value;
+  var commandArray=lsystem.split(" ");  
+
+  doLsys(commandArray, mvMatrix);
+var units = [
+[0,0,1],
+[0,0,-1],
+[0,1,1],
+[0,1,-1],
+[1,1,1],
+[1,1,-1],
+[1,-1,1],
+[-1,1,1],
+[-1,-1,1],
+[-1,1,-1],
+[-1,-1,-1],
+];
+  for (var phi = 0; phi < 3.14; phi=phi+1.6) {
+  for (var theta = 0; theta < 6.28; theta=theta+1.0) {
+       mat4.identity(mvMatrix);
+       mat4.multiply(mvMatrix, moonRotationMatrix);
+       mat4.rotate(mvMatrix, phi, [1,0,0]);
+       mat4.rotate(mvMatrix, theta, [0,1,0]);
+       //if ( (iiix != 0) && (iiiy != 0) && (iiiz !=0)) {
+       //mat4.translate(mvMatrix, [2*(iiix-0.5), 2*(iiiy-0.5), 2*(iiiz-0.5)]);
+       mat4.translate(mvMatrix, [1,0,0]);
+       //console.log([iiix, iiiy, iiiz])
+       //}
+          //var cmdArray = 
+  doLsys("s s set_shader_burngrid cube".split(" "), mvMatrix);
+  }}
+}
+
+
+    function tick() {
+        requestAnimFrame(tick);
+
+	polyCount=0;
+        drawScene();    
+	document.getElementById("log").innerHTML = "<ul><li>PolyCount : " + polyCount + "</li></ul>"; 
+    }
+
+
+    function webGLStart() {
+        var canvas = document.getElementById("lesson11-canvas");
+        initGL(canvas);
+        initShaders("plastique");
+        initShaders("wireframe");
+        initShaders("solar-storm");
+        initShaders("burngrid");
+        initShaders("ripples");
+        initShaders("ripples2");
+        initShaders("lazer-line");
+        initShaders("default-fs");
+        initBuffers();
+        initTexture();
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);	
+
+        canvas.onmousedown = handleMouseDown;
+        document.onmouseup = handleMouseUp;
+        document.onmousemove = handleMouseMove;
+
+        tick();
+    }
+
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();">
+<div class="well" style="float:right">
+    <input type="checkbox" id="lighting" checked /> Use lighting<br/>
+    <input type="checkbox" id="VerticalFlip" checked /> Flip horizontal<br/>
+    <input type="checkbox" id="HorizontalFlip" checked /> Flip vertical<br/>
+    </div>
+   
+    <canvas id="lesson11-canvas" style="border: none;" width="400" height="400"></canvas>
+
+<input type="text" id="lsystem" size="200" value="U t t t R   ff ff ff u f r [ R board ] [ board ] f f f f s s figure" />
+
+    
+    <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Commands</div>
+  <div class="panel-body">
+    <p>Each command is separated by a space.  You may use the following commands:</p>
+  </div>
+
+    
+    
+    <table class="table" style="border: 0; padding: 10px;">
+        <tr><td>ff</td><td>Forwards one step</td></tr>
+        <tr><td>fh</td><td>Forwards half step</td></tr>
+        <tr><td>u</td><td>Pitch up 90 degrees</td></tr>
+        <tr><td>U</td><td>Pitch down 90 degrees</td></tr>
+        <tr><td>s</td><td>Shrink</td></tr>
+        <tr><td>S</td><td>Expand</td></tr>
+        
+        <tr><td>r</td><td>Turn right 90 degrees</td></tr>
+        <tr><td>R</td><td>Turn left 90 degrees</td></tr>
+        
+        <tr><td>t</td><td>Tilt 45 degrees</td></tr>
+        <tr><td>T</td><td>Tilt 45 degrees</td></tr>
+        
+        <tr><td>rise</td><td>Move up without changing direction</td></tr>
+        <tr><td>lower</td><td>Descend without changing direction</td></tr>
+        
+        <tr><td>tr</td><td>Draw a triangle</td></tr>
+        <tr><td>cube</td><td>Draw a cube</td></tr>
+        <tr><td>figure</td><td>Draw a stick figure</td></tr>
+        <tr><td>board</td><td>Draw a chess board</td></tr>
+        <tr><td>arrow</td><td>Draw an arrow</td></tr>
+        
+        <tr><td>pNAME</td><td>Draw a texture panel.  Try: pgrass_tile, pbush_tile, pgrass_tile, pmoon</td></tr>
+        <tr><td>set_shader_NAME</td><td>Choose a shader. Try set_shader_solar-storm,set_shader_wireframe,set_shader_burngrid.  Also ripples, ripples2,lazer-line, default-fs</td></tr>
+        <tr><td>shader_NAME</td><td>Draw a panel with a shader. Try shader_solar-storm, shader_wireframe, shader_burngrid.  Also ripples, ripples2, lazer-line, default-fs</td></tr>
+        </table>
+            
+    </div>
+    
+    <div  style="display:none">
+    <h2>Directional light:</h2>
+
+    <table style="border: 0; padding: 10px;">
+        <tr>
+            <td><b>Direction:</b>
+            <td>X: <input type="text" id="lightDirectionX" value="-1.0" />
+            <td>Y: <input type="text" id="lightDirectionY" value="-1.0" />
+            <td>Z: <input type="text" id="lightDirectionZ" value="-1.0" />
+        </tr>
+        <tr>
+            <td><b>Colour:</b>
+            <td>R: <input type="text" id="directionalR" value="0.8" />
+            <td>G: <input type="text" id="directionalG" value="0.8" />
+            <td>B: <input type="text" id="directionalB" value="0.8" />
+        </tr>
+    </table>
+</div>
+
+    <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Log Output</div>
+  <div class="panel-body" id=log>
+    
+  </div>
+  </div>
+  
+  
+ 
+
+
+
+    
+    <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Debug Output</div>
+  <div class="panel-body" id=debug>
+    
+  </div>
+  </div>
+
+    
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+</body>
+
+</html>
