@@ -591,6 +591,7 @@ void main() {
 
     function setMatrixUniforms(name) {
         if (! name) {name = "default-fs"};
+		//console.log("Setting matrix for " + name);
         gl.uniformMatrix4fv(shaderProgram[name].pMatrixUniform, false, pMatrix);
         gl.uniformMatrix4fv(shaderProgram[name].mvMatrixUniform, false, mvMatrix);
 
@@ -642,19 +643,19 @@ void main() {
 
     var moonVertexPositionBuffer;
     var moonVertexNormalBuffer;
-    var moonVertexTextureCoordBuffer;
     var moonVertexIndexBuffer;
     
     var squareVertexPositionBuffer;
     var squareVertexColorBuffer;
+	var squareVertexIndexBuffer;
     var triangleVertexPositionBuffer;
     var triangleVertexColorBuffer;
 
     
 
     function initBuffers() {
-        var latitudeBands = 10;
-        var longitudeBands = 10;
+        var latitudeBands = 1;
+        var longitudeBands = 1;
         var radius = 2;
 
         var vertexPositionData = [];
@@ -686,22 +687,29 @@ void main() {
                 vertexPositionData.push(radius * z);
             }
             
-                    squareVertexPositionBuffer = gl.createBuffer();
+        squareVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
         vertices = [
              1.0,  1.0,  0.0,
             -1.0,  1.0,  0.0,
              1.0, -1.0,  0.0,
-            -1.0, -1.0,  0.0
+            -0.0, -1.0,  0.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
         squareVertexPositionBuffer.itemSize = 3;
         squareVertexPositionBuffer.numItems = 4;
-
+		var indexData = [0,1,2,3];
+		//squareVertexIndexBuffer = gl.createBuffer();
+        //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareVertexIndexBuffer);
+        //gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+        //squareVertexIndexBuffer.itemSize = 1;
+        //squareVertexIndexBuffer.numItems = indexData.length;
+		
+		
  squareVertexColorBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-        colors = []
-        colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+    colors = []
+    colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
 	colors = colors.concat([1.0, 0.5, 0.5, 1.0]);
 	colors = colors.concat([0.5, 1.0, 0.5, 1.0]);
 	colors = colors.concat([1.0, 1.0, 1.0, 1.0]);
@@ -723,7 +731,11 @@ void main() {
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
         triangleVertexPositionBuffer.itemSize = 2;
         triangleVertexPositionBuffer.numItems = 3;
+		
+		
 
+		
+		
  triangleVertexColorBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
         colors = []
@@ -850,7 +862,9 @@ polyCount +=2;
   //      if (!t) {alert("Texture " + tex + " not loaded");}
  //       gl.bindTexture(gl.TEXTURE_2D, t);
         if (!name) { name=current_shader; }
-        gl.useProgram(shaderProgram[name]);
+		
+		//console.log("Drawing " + name);
+        gl.useProgram(shaderProgram[name]);  //FIXME whooops
         gl.uniform1i(shaderProgram[name].samplerUniform, 0);
         gl.uniform1f(shaderProgram[name].time, clock);
         
@@ -887,27 +901,27 @@ polyCount +=2;
         }
 
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        //gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        //gl.vertexAttribPointer(shaderProgram["wireframe"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
-        gl.vertexAttribPointer(shaderProgram["wireframe"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        //gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
+        //gl.vertexAttribPointer(shaderProgram["wireframe"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
-        gl.vertexAttribPointer(shaderProgram["wireframe"].vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        //gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
+        //gl.vertexAttribPointer(shaderProgram["wireframe"].vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         
         
         if (name) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+			gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
         
 
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-        gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+			gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        setMatrixUniforms(name);
+			setMatrixUniforms(name);
         }
         
         
@@ -921,14 +935,14 @@ polyCount +=2;
         if (tex) {
         gl.activeTexture(gl.TEXTURE0);
         var t = texture[tex];
-        //if (!t) {alert("Texture " + tex + " not loaded");}
+        if (!t) {console.log("Texture " + tex + " not loaded");}
         gl.bindTexture(gl.TEXTURE_2D, t);
         gl.useProgram(shaderProgram["default-fs"]);
         gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
         gl.uniform1f(shaderProgram["default-fs"].time, clock);
         }
         
-                gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
@@ -941,7 +955,7 @@ polyCount +=2;
         
         
         
-gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
         
 
@@ -1178,7 +1192,7 @@ var units = [
    
     <canvas id="lesson11-canvas" style="border: none;" width="400" height="400"></canvas>
 
-<input type="text" id="lsystem" size="200" value="U t t t R   ff ff ff u f r [ R board ] [ board ] f f f f s s figure" />
+<input type="text" id="lsystem" size="200" value="U t t t R   ff ff ff u f r ff ff ff ff ff r r S pgrass_tile   [ R board ] [ board ] " />
 
     
     <div class="panel panel-default">
