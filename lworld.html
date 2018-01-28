@@ -3,20 +3,26 @@
 <head>
 <title>Window into...</title>
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<script
+  src="https://code.jquery.com/jquery-1.12.4.min.js"
+  integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+  crossorigin="anonymous"></script>
+  
 <!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 
 <!-- Optional theme -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
 
 <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="webgl-utils.js"></script>
+
 <script type="text/javascript" src="gldebug.js"></script>
 <script type="text/javascript">
-var fov = 90;
-var animFrame=0;
-var polyCount=0;
-var clock=0.0;
+	var fov = 90;
+	var animFrame=0;
+	var polyCount=0;
+	var clock=0.0;
     var moonTexture;
     var plantTexture;
     var current_shader="default-fs";
@@ -30,7 +36,7 @@ var clock=0.0;
     moonRotationMatrix = mat4.create();
     mat4.identity(moonRotationMatrix);
 
-        function degToRad(degrees) {
+    function degToRad(degrees) {
         return degrees * Math.PI / 180;
     }
 
@@ -80,13 +86,12 @@ lastgamma=(gamma+lastgamma)/2;
 //document.getElementById("log").innerHTML = "<ul><li>Alpha : " + alpha + "</li><li>Beta : " + beta + "</li><li>Gamma : " + gamma + "</li></ul>"; 
 
 }
+//Here be fragment shaders
 </script>
+
+
 <script id="chaser-line" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
+precision highp float;
 #define PI 3.1415927
 
 uniform float time;
@@ -131,11 +136,7 @@ void main( void ) {
 }
 </script>
 <script id="lazer-line" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
+precision highp float;
 #define PI 3.1415927
 
 uniform float time;
@@ -171,11 +172,7 @@ void main()
 </script>
 
 <script id="solar-storm" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
+precision highp float;
 #define PI 3.1415927
 
 uniform float time;
@@ -203,22 +200,18 @@ void main(void)
 </script>
 
 <script id="burngrid" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
+precision highp float;
 #define PI 3.1415927
 
 uniform float time;
 float stime = time * 10.0;
- vec2 resolution = vec2(1.0,1.0);
+vec2 resolution;
 varying vec2 vTextureCoord;
 
 
 
 void main( void ) {
-
+	resolution = vec2(1.0,1.0);
 	vec2 position = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x ;
 
 	float color = 0.0;
@@ -232,11 +225,7 @@ void main( void ) {
 }</script>
 
 <script id="ripples2" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
+precision highp float;
 #define PI 3.1415927
 
 uniform float time;
@@ -269,11 +258,7 @@ vec2 position = (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x ;
 </script>
 
 <script id="ripples" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
+precision highp float;
 #define PI 3.1415927
 
 uniform float time;
@@ -306,11 +291,6 @@ vec2 p = position*8.0- vec2(20.0);
 </script>
 
 <script id="stars" type="x-shader/x-fragment">
-
-#ifdef GL_ES
-precision mediump float;
-#endif
-
 #define PI 3.1415927
 
 uniform float time;
@@ -372,7 +352,7 @@ void main() {
 
 </script>
 <script id="plastique" type="x-shader/x-fragment">
-    precision mediump float;
+	precision highp float;
     uniform float time;
 
     vec2 resolution = vec2(1.0,1.0);
@@ -391,7 +371,7 @@ void main() {
 </script>
 
 <script id="wireframe" type="x-shader/x-fragment">
-    precision mediump float;
+    precision highp float;
     uniform float time;
 
     vec2 resolution = vec2(1.0,1.0);
@@ -411,7 +391,7 @@ void main() {
 </script>
 
 <script id="default-fs" type="x-shader/x-fragment">
-    precision mediump float;
+    precision highp float;
     uniform float time;
 
     varying vec2 vTextureCoord;
@@ -425,7 +405,10 @@ void main() {
     }
 </script>
 
+
 <script id="shader-vs" type="x-shader/x-vertex">
+	//Here be the vertex shader
+	precision highp float;
     attribute vec3 aVertexPosition;
     attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
@@ -461,11 +444,10 @@ void main() {
 
 
 <script type="text/javascript">
-
-    
     function initGL(canvas) {
         try {
             gl = canvas.getContext("experimental-webgl");
+			WebGLDebugUtils.init(gl);
             gl.viewportWidth = canvas.width;
             gl.viewportHeight = canvas.height;
         } catch (e) {
@@ -475,7 +457,8 @@ void main() {
         }
     }
 
-
+//Compiles and returns a shader.
+//Don't call it twice on the same shader
     function getShader(gl, id) {
         var shaderScript = document.getElementById(id);
         if (!shaderScript) {
@@ -491,23 +474,26 @@ void main() {
             k = k.nextSibling;
         }
 
+		console.log("Compiling shader " + id);
         var shader;
         if (shaderScript.type == "x-shader/x-fragment") {
             shader = gl.createShader(gl.FRAGMENT_SHADER);
         } else if (shaderScript.type == "x-shader/x-vertex") {
             shader = gl.createShader(gl.VERTEX_SHADER);
         } else {
+			alert("failed");
             return null;
         }
 
         gl.shaderSource(shader, str);
         gl.compileShader(shader);
-
+		console.log(gl.getShaderInfoLog(shader));
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
             alert(gl.getShaderInfoLog(shader));
             return null;
         }
-
+		console.log(shader);
+		console.log("Compile complete");
         return shader;
     }
 
@@ -515,6 +501,7 @@ void main() {
     var shaderProgram = [];
 
     function initShaders(name) {
+		console.log("Initialising shader " + name);
         var fragmentShader = getShader(gl, name);//"shader-fs");
         //var fragmentShader = getShader(gl, "shader-fs");
         var vertexShader = getShader(gl, "shader-vs");
@@ -524,9 +511,14 @@ void main() {
         gl.attachShader(shaderProgram[name], vertexShader);
         gl.attachShader(shaderProgram[name], fragmentShader);
         gl.linkProgram(shaderProgram[name]);
+		console.log(name + ":" + gl.getProgramInfoLog(shaderProgram[name]));
+		gl.validateProgram(shaderProgram[name]);
 
-        if (!gl.getProgramParameter(shaderProgram[name], gl.LINK_STATUS)) {
-            alert("Could not initialise shaders: " + WebGLDebugUtils.glEnumToString(gl.getError()));
+		
+		if ( !gl.getProgramParameter( shaderProgram[name], gl.LINK_STATUS) ) {
+		  var info = gl.getProgramInfoLog(shaderProgram[name]);
+		  console.log('Could not compile WebGL program. \n\n', info);
+            console.log("Could not initialise shaders: " + WebGLDebugUtils.glEnumToString(gl.getError()));
         }
 
         gl.useProgram(shaderProgram[name]);
@@ -552,23 +544,19 @@ void main() {
     }
 
 
-    function handleLoadedTexture(texture) {
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+    function makeTexture(filename, extension) {
+	console.log("Creating texture from ", filename);
+    var newTexture = gl.createTexture();
+        newTexture.image = new Image();
+        newTexture.image.onload = function () {
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_2D, newTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, newTexture.image);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
         gl.generateMipmap(gl.TEXTURE_2D);
 
         gl.bindTexture(gl.TEXTURE_2D, null);
-    }
-
-
-    function makeTexture(filename, extension) {
-    var newTexture = gl.createTexture();
-        newTexture.image = new Image();
-        newTexture.image.onload = function () {
-            handleLoadedTexture(newTexture)
         }
 
         newTexture.image.src = filename + "." + extension;
