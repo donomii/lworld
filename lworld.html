@@ -23,8 +23,6 @@
 	var animFrame=0;
 	var polyCount=0;
 	var clock=0.0;
-    var moonTexture;
-    var plantTexture;
     var current_shader="default-fs";
     var texture = [];
     var gl;
@@ -52,9 +50,9 @@ function showAndClearField(frm){
         if (canvas.getContext){
           var ctx = canvas.getContext('2d');
           ctx.fillStyle = "rgb(200,200,200)";
-  ctx.canvas.width  = window.innerWidth;
-  ctx.canvas.height = window.innerHeight;
-        ctx.fillRect (xpos, ypos, 10*fov, 10*fov);
+		  ctx.canvas.width  = window.innerWidth;
+		  ctx.canvas.height = window.innerHeight;
+		  ctx.fillRect (xpos, ypos, 10*fov, 10*fov);
         }
       }
       
@@ -549,7 +547,7 @@ void main() {
     var newTexture = gl.createTexture();
         newTexture.image = new Image();
         newTexture.image.onload = function () {
-                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_2D, newTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, newTexture.image);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -564,13 +562,10 @@ void main() {
     }
 
     function initTexture() {
-        moonTexture = makeTexture("moon", "gif");
-        
-        plantTexture = makeTexture( "imari_06_512", "png");
         texture["dirt_tile"] = makeTexture("dirt_tile", "png");
         texture["bush_tile"] = makeTexture("bush_tile", "png");
         texture["grass_tile"] = makeTexture("grass_tile", "png");
-        texture["moon"] = moonTexture;
+        texture["moon"] = makeTexture("moon_tile", "png");
     }
 
 
@@ -586,11 +581,12 @@ void main() {
 
     function mvPopMatrix(aMatrix) {
         if (mvMatrixStack.length == 0) {
-            throw "Invalid popMatrix, stack is empty!";
-        }
-        var copy = mvMatrixStack.pop();
-        mat4.set(copy, aMatrix);
-        return aMatrix;
+            console.log( "Invalid popMatrix, stack is empty!");
+        } else {
+			var copy = mvMatrixStack.pop();
+			mat4.set(copy, aMatrix);
+			return aMatrix;
+		}
     }
 
     function setMatrixUniforms(name) {
@@ -785,7 +781,7 @@ void main() {
 
 function drawMoon(){
 gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, moonTexture);
+        gl.bindTexture(gl.TEXTURE_2D, texture['moon']);
         gl.uniform1i(shaderProgram["wireframe"].samplerUniform, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
@@ -807,7 +803,7 @@ gl.activeTexture(gl.TEXTURE0);
 function drawTriangle() {
 polyCount +=2;
 gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, moonTexture);
+        gl.bindTexture(gl.TEXTURE_2D, texture['moon']);
         gl.uniform1i(shaderProgram["wireframe"].samplerUniform, 0);
 
         
@@ -828,7 +824,7 @@ gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
 function drawSquare() {
 polyCount +=2;
 gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, moonTexture);
+        gl.bindTexture(gl.TEXTURE_2D, texture['moon']);
         gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
 
         
@@ -958,27 +954,6 @@ gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
 }
 
 
-function drawPlant() {
-
-gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, plantTexture);
-        gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
-
-        
-gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-        
-
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-        gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        setMatrixUniforms();
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
-
-
-}
-
 
 function doLsys(oldArray, startMatrix) {
 clock=clock+0.01;
@@ -1034,7 +1009,7 @@ var commandArray=[];
   }
   oldArray=commandArray;
   }
-  //document.getElementById("debug").innerHTML=commandArray;
+  document.getElementById("debug").innerHTML=commandArray;
   for (var i = 0; i < commandArray.length; i++) {
 	if (commandArray[i] == 'fh') {
 	  mat4.translate(transMatrix, [0, 0.5, 0]);
@@ -1150,7 +1125,7 @@ var units = [
        //console.log([iiix, iiiy, iiiz])
        //}
           //var cmdArray = 
-  doLsys("s s set_shader_burngrid cube".split(" "), mvMatrix);
+  //doLsys("s s set_shader_burngrid cube".split(" "), mvMatrix);
   }}
 }
 
