@@ -638,50 +638,34 @@ void main() {
     
 
     function initBuffers() {
-        var latitudeBands = 1;
-        var longitudeBands = 1;
-        var radius = 2;
-
-        var vertexPositionData = [];
-        var normalData = [];
-        var textureCoordData = [];
-        for (var latNumber=0; latNumber <= latitudeBands; latNumber++) {
-            var theta = latNumber * Math.PI / latitudeBands;
-            var sinTheta = Math.sin(theta);
-            var cosTheta = Math.cos(theta);
-
-            for (var longNumber=0; longNumber <= longitudeBands; longNumber++) {
-                var phi = longNumber * 2 * Math.PI / longitudeBands;
-                var sinPhi = Math.sin(phi);
-                var cosPhi = Math.cos(phi);
-
-                var x = cosPhi * sinTheta;
-                var y = cosTheta;
-                var z = sinPhi * sinTheta;
-                var u = 1 - (longNumber / longitudeBands);
-                var v = 1 - (latNumber / latitudeBands);
-
-                normalData.push(x);
-                normalData.push(y);
-                normalData.push(z);
-                textureCoordData.push(u);
-                textureCoordData.push(v);
-                vertexPositionData.push(radius * x);
-                vertexPositionData.push(radius * y);
-                vertexPositionData.push(radius * z);
-            }
+        
             
+            
+            //Vertexes
         squareVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
         vertices = [
              1.0,  1.0,  0.0,
             -1.0,  1.0,  0.0,
              1.0, -1.0,  0.0,
-            -0.0, -1.0,  0.0
+            -1.0, -1.0,  0.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
         squareVertexPositionBuffer.itemSize = 3;
         squareVertexPositionBuffer.numItems = 4;
+
+		//TexCoords
+        squareTexCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareTexCoordBuffer);
+        texcoords = [
+            1.0,  1.0,  0.0,
+            0.0,  1.0,  0.0,
+            1.0,  0.0,  0.0,
+            0.0,  0.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
+        squareTexCoordBuffer.itemSize = 3;
+        squareTexCoordBuffer.numItems = 4;
 		
 		
  squareVertexColorBuffer = gl.createBuffer();
@@ -727,29 +711,8 @@ void main() {
         
         
         
-        }
+        
 
-        var indexData = [];
-        for (var latNumber=0; latNumber < latitudeBands; latNumber++) {
-            for (var longNumber=0; longNumber < longitudeBands; longNumber++) {
-                var first = (latNumber * (longitudeBands + 1)) + longNumber;
-                var second = first + longitudeBands + 1;
-                indexData.push(first);
-                indexData.push(second);
-                indexData.push(first + 1);
-
-                indexData.push(second);
-                indexData.push(second + 1);
-                indexData.push(first + 1);
-            }
-        }
-
-
-        moonVertexTextureCoordBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordData), gl.STATIC_DRAW);
-        moonVertexTextureCoordBuffer.itemSize = 2;
-        moonVertexTextureCoordBuffer.numItems = textureCoordData.length / 2;
 
     }
 
@@ -888,8 +851,8 @@ function drawPanel(tex) {
 		gl.uniform1f(shaderProgram["default-fs"].time, clock);
 	}
 
-	gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
-	gl.vertexAttribPointer(shaderProgram["default-fs"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	gl.bindBuffer(gl.ARRAY_BUFFER, squareTexCoordBuffer);
+	gl.vertexAttribPointer(shaderProgram["default-fs"].textureCoordAttribute, squareTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 
 
@@ -1097,6 +1060,7 @@ function drawScene() {
 
 <body onload="webGLStart();">
 <div class="well" style="float:right">
+<p>version 6</p>
     <input type="checkbox" id="lighting" checked /> Use lighting<br/>
     <input type="checkbox" id="VerticalFlip" checked /> Flip horizontal<br/>
     <input type="checkbox" id="HorizontalFlip" checked /> Flip vertical<br/>
