@@ -43,12 +43,9 @@
     mat4.identity(moonRotationMatrix);
 
 	
-//Buffers!  Hooray	
-    var moonVertexPositionBuffer;
-    
+//Buffers!  Hooray
     var squareVertexPositionBuffer;
     var squareVertexColorBuffer;
-	var squareVertexIndexBuffer;
     var triangleVertexPositionBuffer;
     var triangleVertexColorBuffer;
 
@@ -174,13 +171,14 @@ precision highp float;
 #define PI 3.1415927
 
 uniform float time;
- vec2 resolution = vec2(1.0,1.0);
+ 
 varying vec2 vTextureCoord;
 
 
 
 void main(void)
 {
+vec2 resolution = vec2(1.0,1.0);
   // Be Cool
   vec2 p = -1.0 + 2.0 * (2.0*(vTextureCoord.xy-vec2(0.5,0.5)))/ resolution.x;
  
@@ -406,12 +404,12 @@ void main() {
 	//Here be the vertex shader
 	precision highp float;
     attribute vec3 aVertexPosition;
+	attribute vec3 aVertexColor;
     attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
 
     uniform mat4 uMVMatrix;
     uniform mat4 uPMatrix;
-    uniform mat3 uNMatrix;
 
     uniform vec3 uAmbientColor;
 
@@ -427,14 +425,8 @@ void main() {
     void main(void) {
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vTextureCoord = aTextureCoord;
+		vLightWeighting = aVertexColor;
 
-        if (!uUseLighting) {
-            vLightWeighting = vec3(1.0, 1.0, 1.0);
-        } else {
-            vec3 transformedNormal = uNMatrix * aVertexNormal;
-            float directionalLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);
-            vLightWeighting = uAmbientColor + uDirectionalColor * directionalLightWeighting;
-        }
     }
 </script>
 
@@ -526,6 +518,10 @@ void main() {
         shaderProgram[name].vertexPositionAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexPosition");
         gl.enableVertexAttribArray(shaderProgram[name].vertexPositionAttribute);
 
+		shaderProgram[name].vertexColorAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexColor");
+        gl.enableVertexAttribArray(shaderProgram[name].vertexColorAttribute);
+
+		
         shaderProgram[name].textureCoordAttribute = gl.getAttribLocation(shaderProgram[name], "aTextureCoord");
         gl.enableVertexAttribArray(shaderProgram[name].textureCoordAttribute);
 
@@ -566,7 +562,6 @@ void main() {
         texture["dirt_tile"] = makeTexture("dirt_tile", "png");
         texture["bush_tile"] = makeTexture("bush_tile", "png");
         texture["grass_tile"] = makeTexture("grass_tile", "png");
-        texture["moon"] = makeTexture("moon_tile", "png");
     }
 
 
@@ -595,10 +590,6 @@ void main() {
         gl.uniformMatrix4fv(shaderProgram[name].pMatrixUniform, false, pMatrix);
         gl.uniformMatrix4fv(shaderProgram[name].mvMatrixUniform, false, mvMatrix);
 
-        var normalMatrix = mat3.create();
-        mat4.toInverseMat3(mvMatrix, normalMatrix);
-        mat3.transpose(normalMatrix);
-        gl.uniformMatrix3fv(shaderProgram[name].nMatrixUniform, false, normalMatrix);
     }
 
 	//UI handler functions
@@ -645,14 +636,16 @@ void main() {
         squareVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
         vertices = [
-             1.0,  1.0,  0.0,
-            -1.0,  1.0,  0.0,
-             1.0, -1.0,  0.0,
-            -1.0, -1.0,  0.0
+            1.0,  1.0,  0.0,
+           -1.0,  1.0,  0.0,
+            1.0, -1.0,  0.0,
+			1.0, -1.0,  0.0,
+           -1.0, -1.0,  0.0,
+		   -1.0,  1.0,  0.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
         squareVertexPositionBuffer.itemSize = 3;
-        squareVertexPositionBuffer.numItems = 4;
+        squareVertexPositionBuffer.numItems = 6;
 
 		//TexCoords
         squareTexCoordBuffer = gl.createBuffer();
@@ -661,53 +654,58 @@ void main() {
             1.0,  1.0,  0.0,
             0.0,  1.0,  0.0,
             1.0,  0.0,  0.0,
-            0.0,  0.0,  0.0
+			1.0,  0.0,  0.0,
+            0.0,  0.0,  0.0,
+			0.0,  1.0,  0.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
         squareTexCoordBuffer.itemSize = 3;
-        squareTexCoordBuffer.numItems = 4;
+        squareTexCoordBuffer.numItems = 6;
 		
 		
  squareVertexColorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-    colors = []
-    colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
-	colors = colors.concat([1.0, 0.5, 0.5, 1.0]);
-	colors = colors.concat([0.5, 1.0, 0.5, 1.0]);
-	colors = colors.concat([1.0, 1.0, 1.0, 1.0]);
+	var colors = [
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+		1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+    ];	
         
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
         squareVertexColorBuffer.itemSize = 4;
-        squareVertexColorBuffer.numItems = 4;
+        squareVertexColorBuffer.numItems = 6;
         
         
         triangle:
         
-                   triangleVertexPositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
-        vertices = [
-             0.0,  0.0,  0.0,
-            -1.0,  1.0,  0.0,
-             1.0, 1.0,  0.0
-        ];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        triangleVertexPositionBuffer.itemSize = 2;
-        triangleVertexPositionBuffer.numItems = 3;
+	triangleVertexPositionBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+	trvertices = [
+		 0.0,  0.9,  0.0,
+		-1.0,  1.0,  0.0,
+		 1.0, 1.0,  0.0
+	];
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(trvertices), gl.STATIC_DRAW);
+	triangleVertexPositionBuffer.itemSize = 3;
+	triangleVertexPositionBuffer.numItems = 3;
 		
 		
 
 		
 		
- triangleVertexColorBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
-        colors = []
-        colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
-	colors = colors.concat([1.0, 0.5, 0.5, 1.0]);
-	colors = colors.concat([0.5, 1.0, 0.5, 1.0]);
-        
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-        triangleVertexColorBuffer.itemSize = 3;
-        triangleVertexColorBuffer.numItems = 3;
+	triangleVertexColorBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+	var colors = [
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0
+    ];	
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+	triangleVertexColorBuffer.itemSize = 4;
+	triangleVertexColorBuffer.numItems = 3;
         
         
         
@@ -720,13 +718,16 @@ void main() {
 
 function drawTriangle() {
 		polyCount +=2;
-		//gl.activeTexture(gl.TEXTURE0);
-        //gl.bindTexture(gl.TEXTURE_2D, texture['moon']);
-		var name = "default-fs";
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture['dirt_tile']);
+		var name = current_shader;
 		gl.useProgram(shaderProgram[name]);  //FIXME whooops
         gl.uniform1i(shaderProgram[name].samplerUniform, 0);
 
         
+	gl.bindBuffer(gl.ARRAY_BUFFER, squareTexCoordBuffer);
+	gl.vertexAttribPointer(shaderProgram[name].textureCoordAttribute, squareTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
 
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
@@ -737,7 +738,7 @@ function drawTriangle() {
         gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
         gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        setMatrixUniforms();
+        setMatrixUniforms(name);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, triangleVertexPositionBuffer.numItems);
 }
 
@@ -745,32 +746,36 @@ function drawSquare() {
 polyCount +=2;
 gl.activeTexture(gl.TEXTURE0);
         //gl.bindTexture(gl.TEXTURE_2D, texture['moon']);
-		var name = "default-fs";
-        gl.uniform1i(shaderProgram[name].samplerUniform, 0);
+	var name = current_shader;
+	gl.uniform1i(shaderProgram[name].samplerUniform, 0);
 
         
 
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-        
+	gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+	gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-        gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+	gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        setMatrixUniforms();
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+	setMatrixUniforms(name);
+	gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
 }
 
 function drawShader(name) {
+//drawTriangle();
 	polyCount +=2;
 	//alert(tex);
 	gl.activeTexture(gl.TEXTURE0);
 	//       var t = texture[tex];
 	//      if (!t) {alert("Texture " + tex + " not loaded");}
 	//       gl.bindTexture(gl.TEXTURE_2D, t);
-	if (!name) { name=current_shader; }
+	if (!(name==current_shader)) { current_shader=name; }
 
 	//console.log("Drawing " + name);
 	gl.useProgram(shaderProgram[name]);  //FIXME whooops
@@ -810,16 +815,6 @@ function drawShader(name) {
 	}
 
 
-	//gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer);
-	//gl.vertexAttribPointer(shaderProgram["wireframe"].vertexPositionAttribute, moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-	//gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer);
-	//gl.vertexAttribPointer(shaderProgram["wireframe"].textureCoordAttribute, moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-	//gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer);
-	//gl.vertexAttribPointer(shaderProgram["wireframe"].vertexNormalAttribute, moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-
 
 	if (name) {
 		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
@@ -834,8 +829,8 @@ function drawShader(name) {
 	}
 
 
-
-	gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+//console.log("Rendering "+name+" with numitems "+squareVertexPositionBuffer.numItems);
+	gl.drawArrays(gl.TRIANGLES, 0, squareVertexPositionBuffer.numItems);
 }
 
 function drawPanel(tex) {
@@ -865,7 +860,7 @@ function drawPanel(tex) {
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
 	gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-	setMatrixUniforms();
+	setMatrixUniforms(name);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
 }
 
@@ -879,13 +874,14 @@ var markMatrix = mat4.create();
 mat4.set(startMatrix,transMatrix);
 //mvPushMatrix(transMatrix);  
 //mat4.multiply(transMatrix, startMatrix);
-//mat4.scale(transMatrix, [0.5,0.5,0.5]);
+mat4.scale(transMatrix, [0.5,0.5,0.5]);
 //Arrow:  [ s s s f f f f f F  [ r f f ]  [ R f f ] F [ r f f  f  ] [ R f  f f ] F [ r f f f f  ] [ R f f f f ]  ]
 var procedures = [] ;
 procedures["arrow"] = "[ fh s s s ff  pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile F  [ r ff pbush_tile ff pbush_tile ]  [ R ff pbush_tile ff pbush_tile ] F [ r ff pbush_tile ff pbush_tile  ff pbush_tile  ] [ R ff pbush_tile  ff pbush_tile ff pbush_tile ] F [ r ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile  ] [ R ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ]  ]".split(" ");
 //procedures["rows"] = "[ [ f [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff ] r ff R [  [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff f ] ]".split(" ");
 procedures["water_tile"] =  "shader_ripples ff".split(" ") ;
-procedures["rows"] = "[ [ water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff ] r ff R [  pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile pgrass_tile ff water_tile ] ]".split(" ");
+procedures["burn_tile"] =  "shader_burngrid".split(" ") ;
+procedures["rows"] = "[ [ water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff ] r ff R [  burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile ] ]".split(" ");
 procedures["board"] = "[ rows [ r ff ff R rows ] [ r ff  ff ff ff R rows ] [ r ff  ff ff ff ff ff R rows ] ]".split(" ");
 procedures["cube"] = "[ fh [ u fh R fh U fh z ] [ u fh r fh U fh z ] [ u fh z fh U fh z fh U fh z fh U fh z ] ]".split(" ");
 procedures["rise"] = "u s s ff S S U".split(" ");
@@ -925,6 +921,10 @@ var commandArray=[];
   }
   oldArray=commandArray;
   }
+  
+  
+  
+  
   document.getElementById("debug").innerHTML=commandArray;
   for (var i = 0; i < commandArray.length; i++) {
 	if (commandArray[i] == 'fh') {
@@ -935,7 +935,7 @@ var commandArray=[];
 	  drawTriangle();
 	} else if (commandArray[i] == 'f') {
 	  mat4.translate(transMatrix, [0, 1.0, 0]);
-	  //drawPanel("dirt_tile");;
+	  drawPanel("dirt_tile");;
 	} else if (commandArray[i] == 'r') {
 	  mat4.rotate(transMatrix, degToRad(-90), [0, 0, 1]);
 	} else if (commandArray[i] == 'u') {
@@ -965,9 +965,9 @@ var commandArray=[];
 	  mat4.scale(transMatrix,  [0.5, 0.5, 0.5]);
 	} else if (commandArray[i] == 'S') {
 	  mat4.scale(transMatrix,  [2, 2, 2]);
-} else if (commandArray[i] == 't') {
+	} else if (commandArray[i] == 't') {
 	  mat4.rotate(transMatrix, degToRad(-30), [0, 1, 0]);
-} else if (commandArray[i] == 'T') {
+	} else if (commandArray[i] == 'T') {
 	  mat4.rotate(transMatrix, degToRad(30), [0, 1, 0]);
 	} else if (commandArray[i] == '[') {
 	  mvPushMatrix(transMatrix);
@@ -985,17 +985,18 @@ var commandArray=[];
  //               parseFloat(1.0),
  //               parseFloat(1.0)
  // );
-  mat4.identity(mvMatrix);
+  //	mat4.identity(mvMatrix);
 	
   //mat4.translate(mvMatrix, [0, 0, -6]);
 	
-  mat4.multiply(mvMatrix, moonRotationMatrix);
+  //mat4.multiply(mvMatrix, moonRotationMatrix);
   mat4.set(transMatrix, mvMatrix);
   mat4.scale(mvMatrix, [0.5,0.5,0.5]);
 
 
   }
 //mvPopMatrix(transMatrix);
+return transMatrix;
 }
 
 
@@ -1010,7 +1011,7 @@ function drawScene() {
 	mat4.multiply(mvMatrix, moonRotationMatrix);
 	//mat4.translate(mvMatrix, [0,0,-5]);
 			
-	mat4.scale(mvMatrix, [10,10,10]);
+	mat4.scale(mvMatrix, [5,5,5]);
 	//drawSquare();
 	var lsystem = document.getElementById("lsystem").value;
 	var commandArray=lsystem.split(" ");  
@@ -1031,7 +1032,11 @@ function drawScene() {
     function webGLStart() {
         var canvas = document.getElementById("lesson11-canvas");
         initGL(canvas);
-        initShaders("plastique");
+        
+        initBuffers();
+        initAllTextures();
+
+		initShaders("plastique");
         initShaders("wireframe");
         initShaders("solar-storm");
         initShaders("burngrid");
@@ -1039,9 +1044,7 @@ function drawScene() {
         initShaders("ripples2");
         initShaders("lazer-line");
         initShaders("default-fs");
-        initBuffers();
-        initAllTextures();
-
+		
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);	
 
@@ -1049,6 +1052,8 @@ function drawScene() {
         document.onmouseup = handleMouseUp;
         document.onmousemove = handleMouseMove;
 
+		document.getElementById("shaders").innerHTML = Object.keys(shaderProgram);
+		
         tick();
     }
 
@@ -1060,7 +1065,7 @@ function drawScene() {
 
 <body onload="webGLStart();">
 <div class="well" style="float:right">
-<p>version 6</p>
+<p>version 7</p>
     <input type="checkbox" id="lighting" checked /> Use lighting<br/>
     <input type="checkbox" id="VerticalFlip" checked /> Flip horizontal<br/>
     <input type="checkbox" id="HorizontalFlip" checked /> Flip vertical<br/>
@@ -1151,6 +1156,13 @@ function drawScene() {
   </div>
   </div>
 
+  <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Shader List</div>
+  <div class="panel-body" id=shaders>
+    
+  </div>
+  </div>
     
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
