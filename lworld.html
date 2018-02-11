@@ -19,6 +19,20 @@
 
 <script type="text/javascript" src="gldebug.js"></script>
 <script type="text/javascript">
+	/*This code requires a bit of explanation.  It consists of two main parts, a basic lsystem engine, and a basic webgl engine that draws triangles and squares.  The main complication is that it uses multiple shaders to draw textures on the trinalges and sqaures, which is done by having each different shader in a different program.  This might not have been the best way to do it.
+	
+	Currently, the options for drawing something are:
+	
+	* A triangle, with default colours
+	* A square with default colours
+	* A square with a texture
+	* A square using a shader program to colour it
+	
+	The graphics are drawn in "immediate" mode, i.e. as the lsystem processes each triangle or square command, it draws it immediately.  This results in thousands of gl calls per frame, and completely ruins the performance.
+	
+	*/
+	
+	
 	var fov = 90;
 	var animFrame=0;
 	var polyCount=0;
@@ -78,9 +92,6 @@ function process(event) {
 	mat4.rotate(moonRotationMatrix, degToRad(alpha ), [0, 0, 1]);
 	mat4.rotate(moonRotationMatrix, degToRad((gamma+lastgamma)/2), [0, 1, 0]);
 	lastgamma=(gamma+lastgamma)/2;
-
-//document.getElementById("log").innerHTML = "<ul><li>Alpha : " + alpha + "</li><li>Beta : " + beta + "</li><li>Gamma : " + gamma + "</li></ul>"; 
-
 }
 
 //Here be fragment shaders
@@ -397,7 +408,7 @@ void main() {
 
     void main(void) {
         vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-        gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a);
+        gl_FragColor = vec4(textureColor.rgb, textureColor.a);
     }
 </script>
 <script id="shader-vs" type="x-shader/x-vertex">
@@ -488,8 +499,6 @@ void main() {
     }
 
 
-    
-//Holy balls
     function initShaders(name) {
 		console.log("Initialising shader " + name);
         var fragmentShader = getShader(gl, name);//"shader-fs");
@@ -505,37 +514,36 @@ void main() {
 		console.log(name + ":" + gl.getProgramInfoLog(shaderProgram[name]));
 		gl.validateProgram(shaderProgram[name]);
 
-		
+		//Find and active all attributes
 		if ( !gl.getProgramParameter( shaderProgram[name], gl.LINK_STATUS) ) {
 		  var info = gl.getProgramInfoLog(shaderProgram[name]);
 		  console.log('Could not compile WebGL program. \n\n', info);
             console.log("Could not initialise shaders: " + WebGLDebugUtils.glEnumToString(gl.getError()));
         }
 
-        gl.useProgram(shaderProgram[name]);
+			gl.useProgram(shaderProgram[name]);
 
-		//Locate and save attributes and uniforms
-        shaderProgram[name].vertexPositionAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexPosition");
-        gl.enableVertexAttribArray(shaderProgram[name].vertexPositionAttribute);
+			//Locate and save attributes
+			shaderProgram[name].vertexPositionAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexPosition");
+			gl.enableVertexAttribArray(shaderProgram[name].vertexPositionAttribute);
 
-		shaderProgram[name].vertexColorAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexColor");
-        gl.enableVertexAttribArray(shaderProgram[name].vertexColorAttribute);
+			shaderProgram[name].vertexColorAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexColor");
+			gl.enableVertexAttribArray(shaderProgram[name].vertexColorAttribute);
 
-		
-        shaderProgram[name].textureCoordAttribute = gl.getAttribLocation(shaderProgram[name], "aTextureCoord");
-        gl.enableVertexAttribArray(shaderProgram[name].textureCoordAttribute);
+			shaderProgram[name].textureCoordAttribute = gl.getAttribLocation(shaderProgram[name], "aTextureCoord");
+			gl.enableVertexAttribArray(shaderProgram[name].textureCoordAttribute);
 
-
-        shaderProgram[name].pMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uPMatrix");
-        shaderProgram[name].time = gl.getUniformLocation(shaderProgram[name], "time");
-        shaderProgram[name].mvMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uMVMatrix");
-        shaderProgram[name].nMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uNMatrix");
-        shaderProgram[name].samplerUniform = gl.getUniformLocation(shaderProgram[name], "uSampler");
-        shaderProgram[name].useLightingUniform = gl.getUniformLocation(shaderProgram[name], "uUseLighting");
-        shaderProgram[name].ambientColorUniform = gl.getUniformLocation(shaderProgram[name], "uAmbientColor");
-        shaderProgram[name].lightingDirectionUniform = gl.getUniformLocation(shaderProgram[name], "uLightingDirection");
-        shaderProgram[name].directionalColorUniform = gl.getUniformLocation(shaderProgram[name], "uDirectionalColor");
-    }
+			//Locate and save uniforms
+			shaderProgram[name].pMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uPMatrix");
+			shaderProgram[name].time = gl.getUniformLocation(shaderProgram[name], "time");
+			shaderProgram[name].mvMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uMVMatrix");
+			shaderProgram[name].nMatrixUniform = gl.getUniformLocation(shaderProgram[name], "uNMatrix");
+			shaderProgram[name].samplerUniform = gl.getUniformLocation(shaderProgram[name], "uSampler");
+			shaderProgram[name].useLightingUniform = gl.getUniformLocation(shaderProgram[name], "uUseLighting");
+			shaderProgram[name].ambientColorUniform = gl.getUniformLocation(shaderProgram[name], "uAmbientColor");
+			shaderProgram[name].lightingDirectionUniform = gl.getUniformLocation(shaderProgram[name], "uLightingDirection");
+			shaderProgram[name].directionalColorUniform = gl.getUniformLocation(shaderProgram[name], "uDirectionalColor");
+		}
 
 
 	//Creates a new texture on the gpu and uploads the data
@@ -584,11 +592,13 @@ void main() {
     }
 
 	//Sends the MVP and normal matrices to the GPU
+	//Also 'global' unforms like time
     function setMatrixUniforms(name) {
         if (! name) {name = "default-fs"};
-		//console.log("Setting matrix for " + name);
         gl.uniformMatrix4fv(shaderProgram[name].pMatrixUniform, false, pMatrix);
         gl.uniformMatrix4fv(shaderProgram[name].mvMatrixUniform, false, mvMatrix);
+		gl.uniform1i(shaderProgram[name].samplerUniform, 0);
+		gl.uniform1f(shaderProgram[name].time, clock);
 
     }
 
@@ -627,11 +637,8 @@ void main() {
 
 
     
-
-    function initBuffers() {
-        
-            
-            
+//Create and upload the vertex, colour and texture arrays to draw triangles and squares
+    function initBuffers() {            
             //Vertexes
         squareVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
@@ -644,8 +651,8 @@ void main() {
 		   -1.0,  1.0,  0.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        squareVertexPositionBuffer.itemSize = 3;
-        squareVertexPositionBuffer.numItems = 6;
+        squareVertexPositionBuffer.itemSize = 3;	//We need this for the draw command
+        squareVertexPositionBuffer.numItems = 6;	//We need this for the draw command
 
 		//TexCoords
         squareTexCoordBuffer = gl.createBuffer();
@@ -662,56 +669,45 @@ void main() {
         squareTexCoordBuffer.itemSize = 3;
         squareTexCoordBuffer.numItems = 6;
 		
-		
- squareVertexColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-	var colors = [
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-		1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-    ];	
+		//Vertex colours, will be interpolated across the square
+		squareVertexColorBuffer = gl.createBuffer();
+			gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+			var colors = [
+				1.0, 0.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				1.0, 0.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				
+			];	
         
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
         squareVertexColorBuffer.itemSize = 4;
         squareVertexColorBuffer.numItems = 6;
         
         
-        triangle:
-        
-	triangleVertexPositionBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
-	trvertices = [
-		 0.0,  0.9,  0.0,
-		-1.0,  1.0,  0.0,
-		 1.0, 1.0,  0.0
-	];
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(trvertices), gl.STATIC_DRAW);
-	triangleVertexPositionBuffer.itemSize = 3;
-	triangleVertexPositionBuffer.numItems = 3;
+		triangleVertexPositionBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+		trvertices = [
+			 0.0,  0.9,  0.0,
+			-1.0,  1.0,  0.0,
+			 1.0, 1.0,  0.0
+		];
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(trvertices), gl.STATIC_DRAW);
+		triangleVertexPositionBuffer.itemSize = 3;
+		triangleVertexPositionBuffer.numItems = 3;
 		
-		
-
-		
-		
-	triangleVertexColorBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
-	var colors = [
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0
-    ];	
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-	triangleVertexColorBuffer.itemSize = 4;
-	triangleVertexColorBuffer.numItems = 3;
-        
-        
-        
-        
-
-
+		triangleVertexColorBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+		var colors = [
+			1.0, 0.0, 0.0, 1.0,
+			0.0, 1.0, 0.0, 1.0,
+			0.0, 0.0, 1.0, 1.0
+		];	
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+		triangleVertexColorBuffer.itemSize = 4;
+		triangleVertexColorBuffer.numItems = 3;
     }
 
 
@@ -723,17 +719,12 @@ function drawTriangle() {
 		var name = current_shader;
 		gl.useProgram(shaderProgram[name]);  //FIXME whooops
         gl.uniform1i(shaderProgram[name].samplerUniform, 0);
-
         
-	gl.bindBuffer(gl.ARRAY_BUFFER, squareTexCoordBuffer);
-	gl.vertexAttribPointer(shaderProgram[name].textureCoordAttribute, squareTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareTexCoordBuffer);
+		gl.vertexAttribPointer(shaderProgram[name].textureCoordAttribute, squareTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-        
-
 
         gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
         gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -743,22 +734,16 @@ function drawTriangle() {
 }
 
 function drawSquare() {
-polyCount +=2;
-gl.activeTexture(gl.TEXTURE0);
-        //gl.bindTexture(gl.TEXTURE_2D, texture['moon']);
+	polyCount +=2;
+	gl.activeTexture(gl.TEXTURE0);
 	var name = current_shader;
-	gl.uniform1i(shaderProgram[name].samplerUniform, 0);
-
-        
-
+	
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
 	gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-	
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-	gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
+	gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
 	gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -768,100 +753,40 @@ gl.activeTexture(gl.TEXTURE0);
 }
 
 function drawShader(name) {
-//drawTriangle();
-	polyCount +=2;
-	//alert(tex);
+	if (!shaderProgram[name]) { return; }
 	gl.activeTexture(gl.TEXTURE0);
-	//       var t = texture[tex];
-	//      if (!t) {alert("Texture " + tex + " not loaded");}
-	//       gl.bindTexture(gl.TEXTURE_2D, t);
 	if (!(name==current_shader)) { current_shader=name; }
+	gl.useProgram(shaderProgram[current_shader]);
 
-	//console.log("Drawing " + name);
-	gl.useProgram(shaderProgram[name]);  //FIXME whooops
-	gl.uniform1i(shaderProgram[name].samplerUniform, 0);
-	gl.uniform1f(shaderProgram[name].time, clock);
-
-
-
-
-			//var lighting = document.getElementById("lighting").checked;
-			//gl.uniform1i(shaderProgram["wireframe"].useLightingUniform, lighting);
-			var lighting=0;
-	if (lighting) {
-		gl.uniform3f(
-			shaderProgram["wireframe"].ambientColorUniform,
-			parseFloat(document.getElementById("ambientR").value),
-			parseFloat(document.getElementById("ambientG").value),
-			parseFloat(document.getElementById("ambientB").value)
-		);
-
-		var lightingDirection = [
-			parseFloat(document.getElementById("lightDirectionX").value),
-			parseFloat(document.getElementById("lightDirectionY").value),
-			parseFloat(document.getElementById("lightDirectionZ").value)
-		];
-		var adjustedLD = vec3.create();
-		vec3.normalize(lightingDirection, adjustedLD);
-		vec3.scale(adjustedLD, -1);
-		gl.uniform3fv(shaderProgram["wireframe"].lightingDirectionUniform, adjustedLD);
-
-		gl.uniform3f(
-			shaderProgram["wireframe"].directionalColorUniform,
-			parseFloat(document.getElementById("directionalR").value),
-			parseFloat(document.getElementById("directionalG").value),
-			parseFloat(document.getElementById("directionalB").value)
-		);
-	}
-
-
-
-	if (name) {
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-		gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-		gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-		setMatrixUniforms(name);
-	}
-
-
-//console.log("Rendering "+name+" with numitems "+squareVertexPositionBuffer.numItems);
-	gl.drawArrays(gl.TRIANGLES, 0, squareVertexPositionBuffer.numItems);
+	drawSquare(name);
 }
 
 function drawPanel(tex) {
 	polyCount +=2;
-	//alert(tex);
-	if (tex) {
 		gl.activeTexture(gl.TEXTURE0);
 		var t = texture[tex];
 		if (!t) {console.log("Texture " + tex + " not loaded");}
 		gl.bindTexture(gl.TEXTURE_2D, t);
 		gl.useProgram(shaderProgram["default-fs"]);
-		gl.uniform1i(shaderProgram["default-fs"].samplerUniform, 0);
-		gl.uniform1f(shaderProgram["default-fs"].time, clock);
-	}
+		current_shader = "default-fs";
+
+
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareTexCoordBuffer);
-	gl.vertexAttribPointer(shaderProgram["default-fs"].textureCoordAttribute, squareTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-
+	gl.vertexAttribPointer(shaderProgram[current_shader].textureCoordAttribute, squareTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-	gl.vertexAttribPointer(shaderProgram["default-fs"].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-
+	gl.vertexAttribPointer(shaderProgram[current_shader].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-	gl.vertexAttribPointer(shaderProgram["default-fs"].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	gl.vertexAttribPointer(shaderProgram[current_shader].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
 	setMatrixUniforms(name);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+
+	//Replace the above calls with a call to drawsquare, later
+	
 }
 
 
@@ -953,7 +878,7 @@ var commandArray=[];
 	  drawShader(ret[1]);
 	} else if (commandArray[i].match(current_shaderMatch)) {
 	  var ret = commandArray[i].match(current_shaderMatch);
-	  current_shader=ret[1];
+	  if (shaderProgram[ret[1]]) { current_shader=ret[1]; gl.useProgram(shaderProgram[current_shader]); }
 	} else if (commandArray[i].match(stretchMatch)) {
 	  var ret = commandArray[i].match(stretchMatch);
 	  mat4.scale(transMatrix,  [ret[1], ret[2], ret[3]]);
@@ -1052,7 +977,12 @@ function drawScene() {
         document.onmouseup = handleMouseUp;
         document.onmousemove = handleMouseMove;
 
+		//List the available shaders, for the user to choose
 		document.getElementById("shaders").innerHTML = Object.keys(shaderProgram);
+		
+		//List the available textures, for the user to choose
+		document.getElementById("textures").innerHTML = Object.keys(texture);
+		
 		
         tick();
     }
@@ -1071,12 +1001,42 @@ function drawScene() {
     <input type="checkbox" id="HorizontalFlip" checked /> Flip vertical<br/>
     </div>
    
-    <canvas id="lesson11-canvas" style="border: none;" width="400" height="400"></canvas>
+   
+   <div class="row">
+   <div class="col-sm-8">
+    <canvas id="lesson11-canvas" style="border: none;" width="800" height="600"></canvas>
 
-<input type="text" id="lsystem" size="200" value="U t t t R   ff ff ff u f r ff ff ff ff ff r r S pgrass_tile   [ R board ] [ board ] " />
+<input type="text" id="lsystem" size="100" value="U t t t R   ff ff ff u f r ff ff ff ff ff r r S [ pgrass_tile   [ R board ] [ board ] ] F F F F F S rise   cube  " />
 
+
+ <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Shader List</div>
+  <div class="panel-body" id=shaders>
     
-    <div class="panel panel-default">
+  </div>
+  </div>
+
+  
+ <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Texture List</div>
+  <div class="panel-body" id=textures>
+    
+  </div>
+  </div>
+
+
+  <div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Log Output</div>
+  <div class="panel-body" id=log>
+    </div>
+  </div>
+</div>
+
+       <div class="col-sm-4">
+    <div class="panel panel-default" >
   <!-- Default panel contents -->
   <div class="panel-heading">Commands</div>
   <div class="panel-body">
@@ -1085,8 +1045,8 @@ function drawScene() {
 
     
     
-    <table class="table" style="border: 0; padding: 10px;">
-        <tr><td>ff</td><td>Forwards one step</td></tr>
+    <table class="table table-sm table-inverse" style="border: 0; padding: 10px;">
+        <tr><th>ff</th><td>Forwards one step</td></tr>
         <tr><td>fh</td><td>Forwards half step</td></tr>
         <tr><td>u</td><td>Pitch up 90 degrees</td></tr>
         <tr><td>U</td><td>Pitch down 90 degrees</td></tr>
@@ -1107,13 +1067,14 @@ function drawScene() {
         <tr><td>figure</td><td>Draw a stick figure</td></tr>
         <tr><td>board</td><td>Draw a chess board</td></tr>
         <tr><td>arrow</td><td>Draw an arrow</td></tr>
+		<tr><td>pipe</td><td>Draw a length of pipe</td></tr>
         
         <tr><td>pNAME</td><td>Draw a texture panel.  Try: pgrass_tile, pbush_tile, pgrass_tile, pmoon</td></tr>
-        <tr><td>set_shader_NAME</td><td>Choose a shader. Try set_shader_solar-storm,set_shader_wireframe,set_shader_burngrid.  Also ripples, ripples2,lazer-line, default-fs</td></tr>
-        <tr><td>shader_NAME</td><td>Draw a panel with a shader. Try shader_solar-storm, shader_wireframe, shader_burngrid.  Also ripples, ripples2, lazer-line, default-fs</td></tr>
+        <tr><td>shader_NAME</td><td>Draw a panel with a shader.  Use set_shader_NAME to change the current shader without drawing anything.</td></tr>
+		<tr><th>peano2</th><td>Draw some peano curves.  Also: peano1, peano3, peano4.  4 is slow.</td></tr>
         </table>
             
-    </div>
+    
     
     <div  style="display:none">
     <h2>Directional light:</h2>
@@ -1134,21 +1095,13 @@ function drawScene() {
     </table>
 </div>
 
-    <div class="panel panel-default">
-  <!-- Default panel contents -->
-  <div class="panel-heading">Log Output</div>
-  <div class="panel-body" id=log>
     
-  </div>
-  </div>
   
   
- 
-
 
 
     
-    <div class="panel panel-default">
+    <div class="panel panel-default" style="display:none">
   <!-- Default panel contents -->
   <div class="panel-heading">Debug Output</div>
   <div class="panel-body" id=debug>
@@ -1156,14 +1109,9 @@ function drawScene() {
   </div>
   </div>
 
-  <div class="panel panel-default">
-  <!-- Default panel contents -->
-  <div class="panel-heading">Shader List</div>
-  <div class="panel-body" id=shaders>
-    
   </div>
-  </div>
-    
+    </div>
+	</div>
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 </body>
