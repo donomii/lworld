@@ -801,30 +801,30 @@ mat4.set(startMatrix,transMatrix);
 //mvPushMatrix(transMatrix);  
 //mat4.multiply(transMatrix, startMatrix);
 mat4.scale(transMatrix, [0.5,0.5,0.5]);
-//Arrow:  [ s s s f f f f f F  [ r f f ]  [ R f f ] F [ r f f  f  ] [ R f  f f ] F [ r f f f f  ] [ R f f f f ]  ]
+//Arrow:  [ s s s f f f f f F  [ y f f ]  [ Y f f ] F [ y f f  f  ] [ Y f  f f ] F [ y f f f f  ] [ Y f f f f ]  ]
 var procedures = [] ;
-procedures["arrow"] = "[ fh s s s ff  pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile F  [ r ff pbush_tile ff pbush_tile ]  [ R ff pbush_tile ff pbush_tile ] F [ r ff pbush_tile ff pbush_tile  ff pbush_tile  ] [ R ff pbush_tile  ff pbush_tile ff pbush_tile ] F [ r ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile  ] [ R ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ]  ]".split(" ");
-//procedures["rows"] = "[ [ f [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff ] r ff R [  [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff f ] ]".split(" ");
+procedures["arrow"] = "[ fh s s s ff  pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile F  [ y ff pbush_tile ff pbush_tile ]  [ Y ff pbush_tile ff pbush_tile ] F [ y ff pbush_tile ff pbush_tile  ff pbush_tile  ] [ Y ff pbush_tile  ff pbush_tile ff pbush_tile ] F [ y ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile  ] [ Y ff pbush_tile ff pbush_tile ff pbush_tile ff pbush_tile ]  ]".split(" ");
+//procedures["rows"] = "[ [ f [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff ] y ff Y [  [ cube ] ff f [ cube ] ff f [ cube ] ff f [ cube ] ff f ] ]".split(" ");
 procedures["water_tile"] =  "shader_ripples ff".split(" ") ;
 procedures["burn_tile"] =  "shader_burngrid".split(" ") ;
-procedures["rows"] = "[ [ water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff ] r ff R [  burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile ] ]".split(" ");
-procedures["board"] = "[ rows [ r ff ff R rows ] [ r ff  ff ff ff R rows ] [ r ff  ff ff ff ff ff R rows ] ]".split(" ");
-procedures["cube"] = "[ fh [ u fh R fh U fh z ] [ u fh r fh U fh z ] [ u fh z fh U fh z fh U fh z fh U fh z ] ]".split(" ");
+procedures["rows"] = "[ [ water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff ] y ff Y [  burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile burn_tile ff water_tile ] ]".split(" ");
+procedures["board"] = "[ rows [ y ff ff Y rows ] [ y ff  ff ff ff Y rows ] [ y ff  ff ff ff ff ff Y rows ] ]".split(" ");
+procedures["cube"] = "[ fh [ p fh Y fh P fh z ] [ p fh y fh P fh z ] [ p fh z fh P fh z fh P fh z fh P fh z ] ]".split(" ");
 procedures["rise"] = "u s s ff S S U".split(" ");
- procedures["figure"] = " set_shader_solar-storm u ff ff ff ff ff R ff ff  ff R R   ff [  [ ff ff R cube  ]  [ cube ff cube ff cube ff ff ] r ff R   [ cube ff set_shader_solar-storm cube set_shader_default-fs set_shader_solar-storm ff cube ff ff ] r ff R  [ cube ff cube ff cube ff ff ]  ] [ ff r r cube  ff cube ff cube ]  [ ff ff ff cube ff cube ff cube ] [ ff r ff ff cube ff cube ff  ] [ ff ff ff r ff ff cube ff cube ff  ]".split(" ");
+ procedures["figure"] = " set_shader_solar-storm p ff ff ff ff ff Y ff ff  ff Y Y   ff [  [ ff ff Y cube  ]  [ cube ff cube ff cube ff ff ] y ff Y   [ cube ff set_shader_solar-storm cube set_shader_default-fs set_shader_solar-storm ff cube ff ff ] y ff Y  [ cube ff cube ff cube ff ff ]  ] [ ff y y cube  ff cube ff cube ]  [ ff ff ff cube ff cube ff cube ] [ ff y ff ff cube ff cube ff  ] [ ff ff ff y ff ff cube ff cube ff  ]".split(" ");
 procedures["lower"] = "U s s ff S S u".split(" ");
 procedures["a"] = "pdirt_tile ff".split(" ");
 procedures["b"] = "pbush_tile ff".split(" ");
 procedures["c"] = "pgrass_tile ff".split(" ");
 procedures["d"] = "pmoon ff".split(" ");
-procedures["pipe_strip"] = " [ stretch_0.5,8.0,0.5 u ff ff U pdirt_tile ] ".split(" ");
-procedures["pipe"] = " [ s s s pipe_strip t pipe_strip t pipe_strip t  pipe_strip t pipe_strip t pipe_strip t  pipe_strip t pipe_strip t pipe_strip t  pipe_strip t pipe_strip t pipe_strip t ]  ".split(" ");
+procedures["pipe_strip"] = " [ stretch_0.5,8.0,0.5 p ff ff P pdirt_tile ] ".split(" ");
+procedures["pipe"] = " [ s s s pipe_strip r pipe_strip r pipe_strip r  pipe_strip r pipe_strip r pipe_strip r  pipe_strip r pipe_strip r pipe_strip r  pipe_strip r pipe_strip r pipe_strip r ]  ".split(" ");
 procedures["pipe_step"] = " fh pipe  fh  ".split(" ");
 
-procedures["peano1"] = " [ s s  pipe_step R pipe_step r pipe_step pipe_step r pipe_step R pipe_step ] ff t t ".split(" ");
-procedures["peano2"] = "  [ s  r peano1 R peano1 R peano1 peano1 r peano1 r peano1 ] ff  ".split(" ");
-procedures["peano3"] = "  [ s  r peano2 R peano2 R peano2 peano2 r peano2 r peano2 ] ff   ".split(" ");
-procedures["peano4"] = "  [ s  r peano3 R peano3 R peano3 peano3 r peano3 r peano3 ] ff   ".split(" ");
+procedures["peano1"] = " [ s s  pipe_step Y pipe_step y pipe_step pipe_step y pipe_step Y pipe_step ] ff r r ".split(" ");
+procedures["peano2"] = "  [ s  y peano1 Y peano1 Y peano1 peano1 y peano1 y peano1 ] ff  ".split(" ");
+procedures["peano3"] = "  [ s  y peano2 Y peano2 Y peano2 peano2 y peano2 y peano2 ] ff   ".split(" ");
+procedures["peano4"] = "  [ s  y peano3 Y peano3 Y peano3 peano3 y peano3 y peano3 ] ff   ".split(" ");
 
 var texMatch = /^p(.*)/;
 var current_shaderMatch = /^set_shader_(.*)/;
@@ -832,7 +832,7 @@ var shaderMatch = /^shader_(.*)/;
 var stretchMatch = /^stretch_(.*),(.*),(.*)/;
 
 //var map = "[raababacd]f[rdddcddaa]f[rbdabbdcc]f[rabaaabbb]f[rcddcdacbb]f[rccdbadbcaa]f[rcabaccdac]f[rabadddac]";
-//oldArray = "U ff ff ff u f".split(" ");
+//oldArray = "U ff ff ff p f".split(" ");
 //oldArray.push.apply(oldArray, map.split(""));
 document.getElementById("debug").innerHTML=oldArray;
 var commandArray=[];
@@ -862,9 +862,9 @@ var commandArray=[];
 	} else if (commandArray[i] == 'f') {
 	  mat4.translate(transMatrix, [0, 1.0, 0]);
 	  drawPanel("dirt_tile");;
-	} else if (commandArray[i] == 'r') {
+	} else if (commandArray[i] == 'y') {
 	  mat4.rotate(transMatrix, degToRad(-90), [0, 0, 1]);
-	} else if (commandArray[i] == 'u') {
+	} else if (commandArray[i] == 'p') {
 	  mat4.rotate(transMatrix, degToRad(90), [1, 0, 0]);
 	} else if (commandArray[i] == 'F') {
 	  mat4.translate(transMatrix, [0, -1.0, 0]);
@@ -883,9 +883,9 @@ var commandArray=[];
 	} else if (commandArray[i].match(stretchMatch)) {
 	  var ret = commandArray[i].match(stretchMatch);
 	  mat4.scale(transMatrix,  [ret[1], ret[2], ret[3]]);
-	}  else if (commandArray[i] == 'R') {
+	}  else if (commandArray[i] == 'Y') {
 	  mat4.rotate(transMatrix, degToRad(90), [0, 0, 1]);
-	} else if (commandArray[i] == 'U') {
+	} else if (commandArray[i] == 'P') {
 	  mat4.rotate(transMatrix, degToRad(-90), [1, 0, 0]);
 	} else if (commandArray[i] == 's') {
 	  mat4.scale(transMatrix,  [0.5, 0.5, 0.5]);
@@ -1007,7 +1007,7 @@ function drawScene() {
    <div class="col-sm-8">
     <canvas id="lesson11-canvas" style="border: none;" width="800" height="600"></canvas>
 
-<input type="text" id="lsystem" size="100" value="U t t t R   ff ff ff u f r ff ff ff ff ff r r S [ pgrass_tile   [ R board ] [ board ] ] F F F F F S rise   cube  " />
+<input type="text" id="lsystem" size="100" value="P t t t Y   ff ff ff p f y ff ff ff ff ff y y S [ pgrass_tile [ Y board ] [ board ] ] F pcement_tile F pcement_tile S rise F F set_shader_lazer-line cube" />
 
 
  <div class="panel panel-default">
@@ -1041,24 +1041,22 @@ function drawScene() {
   <!-- Default panel contents -->
   <div class="panel-heading">Commands</div>
   <div class="panel-body">
-    <p>Each command is separated by a space.  You may use the following commands:</p>
-  </div>
-
+    
     
     
     <table class="table table-sm table-inverse" style="border: 0; padding: 10px;">
         <tr><th>ff</th><td>Forwards one step</td></tr>
         <tr><td>fh</td><td>Forwards half step</td></tr>
-        <tr><td>u</td><td>Pitch up 90 degrees</td></tr>
-        <tr><td>U</td><td>Pitch down 90 degrees</td></tr>
+        <tr><td>p</td><td>Pitch up 90 degrees</td></tr>
+        <tr><td>P</td><td>Pitch down 90 degrees</td></tr>
         <tr><td>s</td><td>Shrink</td></tr>
         <tr><td>S</td><td>Expand</td></tr>
         
-        <tr><td>r</td><td>Turn right 90 degrees</td></tr>
-        <tr><td>R</td><td>Turn left 90 degrees</td></tr>
+        <tr><td>y</td><td>Turn right 90 degrees</td></tr>
+        <tr><td>Y</td><td>Turn left 90 degrees</td></tr>
         
-        <tr><td>t</td><td>Tilt 45 degrees</td></tr>
-        <tr><td>T</td><td>Tilt 45 degrees</td></tr>
+        <tr><td>r</td><td>Tilt 45 degrees</td></tr>
+        <tr><td>R</td><td>Tilt 45 degrees</td></tr>
         
         <tr><td>rise</td><td>Move up without changing direction</td></tr>
         <tr><td>lower</td><td>Descend without changing direction</td></tr>
@@ -1074,7 +1072,9 @@ function drawScene() {
         <tr><td>shader_NAME</td><td>Draw a panel with a shader.  Use set_shader_NAME to change the current shader without drawing anything.</td></tr>
 		<tr><th>peano2</th><td>Draw some peano curves.  Also: peano1, peano3, peano4.  4 is slow.</td></tr>
         </table>
-            
+    
+  </div>
+        
     
     
     <div  style="display:none">
