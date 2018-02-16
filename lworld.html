@@ -65,7 +65,8 @@
 
       
 	if(window.DeviceOrientationEvent) {
-	  window.addEventListener("deviceorientation", process, false);
+	  //Doesn't work
+	  //window.addEventListener("deviceorientation", process, false);
 	} else {
 	  // Le navigateur ne supporte pas l'événement deviceorientation
 	}
@@ -80,9 +81,9 @@ function process(event) {
 	  animFrame+=1;
 	  var vflip = document.getElementById("VerticalFlip").checked;
 	  var hflip = document.getElementById("HorizontalFlip").checked;
-	  var alpha = -event.alpha;
+	  var alpha = event.alpha;
 	  if(hflip){alpha=alpha*-1;}
-	  var beta =-event.beta;
+	  var beta = event.beta;
 	  if(vflip){beta=beta*-1;}
 	  var gamma = event.gamma;
 	mat4.identity(moonRotationMatrix);
@@ -432,11 +433,13 @@ void main() {
 
     varying vec2 vTextureCoord;
     varying vec3 vLightWeighting;
+	varying vec3 vVertexColor;
 
     void main(void) {
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vTextureCoord = aTextureCoord;
 		vLightWeighting = aVertexColor;
+		vVertexColor = aVertexColor;
 
     }
 </script>
@@ -1005,7 +1008,7 @@ function drawScene() {
 
 <body onload="webGLStart();">
 <div class="well" style="float:right">
-<p>version 7</p>
+<p>version 7a</p>
     <input type="checkbox" id="lighting" checked /> Use lighting<br/>
     <input type="checkbox" id="VerticalFlip" checked /> Flip horizontal<br/>
     <input type="checkbox" id="HorizontalFlip" checked /> Flip vertical<br/>
