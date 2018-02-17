@@ -404,6 +404,7 @@ void main() {
 
     varying vec2 vTextureCoord;
     varying vec3 vLightWeighting;
+	varying vec3 vVertexColor;
 
     uniform sampler2D uSampler;
 
@@ -438,9 +439,7 @@ void main() {
     void main(void) {
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vTextureCoord = aTextureCoord;
-		vLightWeighting = aVertexColor;
-		vVertexColor = aVertexColor;
-
+		
     }
 </script>
 
@@ -530,7 +529,9 @@ void main() {
 			shaderProgram[name].vertexPositionAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexPosition");
 			gl.enableVertexAttribArray(shaderProgram[name].vertexPositionAttribute);
 
+			console.log("Locating vertex color shader for fs ", name)
 			shaderProgram[name].vertexColorAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexColor");
+			if (shaderProgram[name].vertexColorAttribute == -1) { console.log("Failed to init attrib aVertexColor for ", name) }
 			gl.enableVertexAttribArray(shaderProgram[name].vertexColorAttribute);
 
 			shaderProgram[name].textureCoordAttribute = gl.getAttribLocation(shaderProgram[name], "aTextureCoord");
@@ -1008,7 +1009,7 @@ function drawScene() {
 
 <body onload="webGLStart();">
 <div class="well" style="float:right">
-<p>version 7a</p>
+<p>version 8</p>
     <input type="checkbox" id="lighting" checked /> Use lighting<br/>
     <input type="checkbox" id="VerticalFlip" checked /> Flip horizontal<br/>
     <input type="checkbox" id="HorizontalFlip" checked /> Flip vertical<br/>
