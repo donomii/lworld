@@ -531,8 +531,11 @@ void main() {
 
 			console.log("Locating vertex color shader for fs ", name)
 			shaderProgram[name].vertexColorAttribute = gl.getAttribLocation(shaderProgram[name], "aVertexColor");
-			if (shaderProgram[name].vertexColorAttribute == -1) { console.log("Failed to init attrib aVertexColor for ", name) }
-			gl.enableVertexAttribArray(shaderProgram[name].vertexColorAttribute);
+			if (shaderProgram[name].vertexColorAttribute == -1) { 
+				console.log("Failed to init attrib aVertexColor for ", name) 
+			} else {
+				gl.enableVertexAttribArray(shaderProgram[name].vertexColorAttribute);
+			}
 
 			shaderProgram[name].textureCoordAttribute = gl.getAttribLocation(shaderProgram[name], "aTextureCoord");
 			gl.enableVertexAttribArray(shaderProgram[name].textureCoordAttribute);
@@ -756,11 +759,10 @@ function drawSquare() {
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
 	gl.vertexAttribPointer(shaderProgram[name].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-	gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-	gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	if (shaderProgram[current_shader].vertexColorAttribute != -1 ) {
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+		gl.vertexAttribPointer(shaderProgram[name].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	}
 
 	setMatrixUniforms(name);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
@@ -793,9 +795,11 @@ function drawPanel(tex) {
 	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
 	gl.vertexAttribPointer(shaderProgram[current_shader].vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-	gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
-	gl.vertexAttribPointer(shaderProgram[current_shader].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
+	if (shaderProgram[current_shader].vertexColorAttribute != -1 ) {
+		gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+		gl.vertexAttribPointer(shaderProgram[current_shader].vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	}
+	
 	setMatrixUniforms(name);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
 
